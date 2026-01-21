@@ -1,0 +1,417 @@
+\documentclass{article}
+
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2022
+
+
+% ready for submission
+\PassOptionsToPackage{numbers, sort&compress}{natbib}
+\usepackage[final]{neurips_2023}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2022}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2022}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2022}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{comment}        % multiline comments
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{bm}
+\usepackage{amsthm}
+\usepackage{hhline}
+\usepackage{amssymb}
+\usepackage{makecell}
+\usepackage{mathtools}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{MnSymbol}
+\usepackage{makecell}
+\usepackage{graphicx}
+\usepackage{arydshln}
+\usepackage{booktabs}
+\usepackage{framed}
+\usepackage[font=small]{caption}
+\usepackage[scientific-notation=true]{siunitx}
+\usepackage{wrapfig}
+\usepackage{lipsum}
+\usepackage{sidecap}
+\usepackage{pifont}% http://ctan.org/pkg/pifont
+\usepackage{fixltx2e}
+\usepackage[flushleft]{threeparttable}
+\usepackage{diagbox}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+
+\definecolor{gg}{RGB}{15,150,15}
+\definecolor{rr}{RGB}{230,45,45}
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+\newcommand{\todo}[1]{\textcolor{red}{TODO: #1}}
+\newcommand{\martin}[1]{\textcolor{olive}{Martin: #1}}
+\newcommand{\james}[1]{{\color{red} {\bf James:} #1}}
+\newcommand{\camera}[1]{{\color{cyan} {\bf} #1}}
+
+\newcommand{\namel}{\textsc{Factorized Contrastive Learning}}
+\newcommand{\names}{\textsc{FactorCL}}
+\newcommand{\indep}{\perp\!\!\!\perp} 
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+% Recommended, but optional, packages for figures and better typesetting:
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\title{\namel:\\Going Beyond Multi-view Redundancy}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+  Paul Pu Liang$^{1*}$, Zihao Deng$^{2*}$, Martin Q. Ma$^{1*}$\\
+  \textbf{James Zou$^{3}$, Louis-Philippe Morency$^{1}$, Ruslan Salakhutdinov$^{1}$}\\
+  $^{1}$Carnegie Mellon University, $^{2}$University of Pennsylvania, $^{3}$Stanford University\\
+  \texttt{pliang@cs.cmu.edu,zihaoden@cs.cmu.edu,qianlim@cs.cmu.edu} \\
+}
+\begin{document}
+
+\maketitle
+
+\vspace{-8mm}
+\begin{abstract}
+\vspace{-2mm}
+    In a wide range of multimodal tasks, contrastive learning has become a particularly appealing approach since it can successfully learn representations from abundant unlabeled data with only pairing information (e.g., image-caption or video-audio pairs). Underpinning these approaches is the assumption of \textit{multi-view redundancy} - that shared information between modalities is necessary and sufficient for downstream tasks.
+    However, in many real-world settings, task-relevant information is also contained in modality-unique regions: information that is only present in one modality but still relevant to the task.
+    How can we learn self-supervised multimodal representations to capture both shared and unique information relevant to downstream tasks? This paper proposes \names, a new multimodal representation learning method to go beyond multi-view redundancy. \names\ is built from three new contributions: (1) factorizing task-relevant information into shared and unique representations, (2) capturing task-relevant information via maximizing MI lower bounds and removing task-irrelevant information via minimizing MI upper bounds, and (3) multimodal data augmentations to approximate task relevance without labels. On large-scale real-world datasets, \names\ captures both shared and unique information and achieves state-of-the-art results on six benchmarks. \blfootnote{$^*$First three authors contributed equally.}
+\end{abstract}
+
+\vspace{-6mm}
+\section{Introduction}
+\vspace{-2mm}
+
+Learning representations from different modalities is a central paradigm in machine learning~\cite{liang2022foundations}.
+Today, a popular learning method is to first pre-train general representations on unlabeled multimodal data before fine-tuning on task-specific labels~\cite{bugliarello2021multimodal,kenton2019bert,liang2022foundations,liang2022highmmt,lu2019vilbert}. These current multimodal pre-training approaches have largely been inherited from prior work in multi-view learning~\cite{chen2020simple,oord2018representation} that exploit a critical assumption of \textit{multi-view redundancy}: the property that shared information between modalities is almost exactly what is relevant for downstream tasks~\cite{sridharan2008information,tosh2021contrastive,tsai2020self}. 
+When this assumption holds, approaches based on contrastive pre-training to capture shared information~\cite{chen2020simple,khosla2020supervised,radford2021learning,tian2020makes}, followed by fine-tuning to keep task-relevant shared information~\cite{tsai2020self}, have seen successful applications in learning from images and captions~\cite{radford2021learning}, video and audio~\cite{arandjelovic2017look}, speech and transcribed text~\cite{oord2018representation}, and instructions and actions~\cite{eysenbach2022contrastive}.
+However, our paper studies two fundamental limitations in the application of contrastive learning (CL) to broader real-world multimodal settings (see Figure~\ref{fig:overview} for a visual depiction and experimental results showing the performance drop of CL):
+\begin{enumerate}[noitemsep,topsep=0pt,nosep,leftmargin=*,parsep=0pt,partopsep=0pt]
+    \item \textbf{Low \textit{shared} information} relevant to tasks: There exists a wide range of multimodal tasks involving small amounts of shared information, such as between cartoon images and figurative captions (i.e., not literal but metaphoric or idiomatic descriptions of the images~\cite{marsh2003taxonomy, yosef2023irfl}).
+    In these situations, standard multimodal CL will only receive a small percentage of information from the learned representations and struggle to learn the desired task-relevant information.
+    \item \textbf{High \textit{unique} information} relevant to tasks: Many real-world modalities can provide unique information not present in other modalities. Examples include healthcare with medical sensors or robotics with force sensors~\cite{liang2021multibench,liang2023quantifying}. Standard CL will discard task-relevant unique information, leading to poor downstream performance.
+\end{enumerate}
+
+\input{figures/overview_fig}
+
+In light of these limitations, how can we design suitable multimodal learning objectives that work beyond multi-view redundancy? In this paper, starting from the first principles in information theory, we provide formal definitions of shared and unique information via conditional mutual information and propose an approach, \namel\ (\names\  for short), to learn these multimodal representations beyond multi-view redundancy using three key ideas. The first idea is to explicitly \textit{factorize} shared and unique representations. The second idea is to \textit{capture task-relevant} information via maximizing lower bounds on MI and \textit{remove task-irrelevant} information via minimizing upper bounds on MI, resulting in representations with sufficient and necessary information content. Finally, a notion of task relevance without explicit labels in the self-supervised setting is achieved by leveraging \textit{multimodal augmentations}.
+Experimentally, we evaluate the effectiveness of \names\ on a suite of synthetic datasets and large-scale real-world multimodal benchmarks involving images and figurative language~\cite{yosef2023irfl}, prediction of human sentiment~\cite{zadeh2016mosi}, emotions~\cite{zadeh2018multimodal}, humor~\cite{hasan2019ur}, and sarcasm~\cite{castro2019towards}, as well as patient disease and mortality prediction from health indicators and sensor readings~\cite{johnson2016mimic}, achieving new state-of-the-art performance on six datasets. Overall, we summarize our key technical contributions here:
+\begin{enumerate}[noitemsep,topsep=0pt,nosep,leftmargin=*,parsep=0pt,partopsep=0pt]
+    \item A new analysis of contrastive learning performance showing that standard multimodal CL fails to capture task-relevant unique information under low shared or high unique information cases.
+    \item A new contrastive learning algorithm called \names:
+    \begin{enumerate}[noitemsep,topsep=0pt,nosep,leftmargin=*,parsep=0pt,partopsep=0pt]
+        \item \names\ factorizes task-relevant information into shared and unique information, expanding contrastive learning to better handle low shared or high unique information.
+        \item \names\ optimizes shared and unique information separately, by removing task-irrelevant information via MI upper bounds and capturing task-relevant information via lower bounds, yielding optimal task-relevant representations.
+        \item \names\ leverages multimodal augmentations to approximate task-relevant information, enabling self-supervised learning from our proposed \names.
+    \end{enumerate}
+\end{enumerate}
+
+\vspace{-3mm}
+\section{Analysis of Multi-view Contrastive Learning}
+\vspace{-2mm}
+
+We begin by formalizing definitions of four types of information: shared, unique, task-relevant, and task-irrelevant information in multimodal data. To formalize the learning setting, we assume there exist two modalities expressed as random variables $X_1$ and $X_2$ with outcomes $x_1$ and $x_2$, and a task with the random variable $Y$ and outcome $y$. We denote $X_{-i}$ as the other modality where appropriate.
+
+\textbf{Shared and unique information}: We formalize shared and unique information by decomposing the total multimodal information $I (X_1,X_2; Y)$ into three conditional mutual information (MI) terms:
+\begin{align}
+\label{eq:sharedunique}
+     I (X_1,X_2; Y) = \underbrace{I(X_1;X_2;Y)}_\text{$S=\textrm{shared}$} + \underbrace{I(X_1;Y|X_2)}_\text{$U_1=\textrm{uniqueness in } X_1$} + \underbrace{I(X_2;Y|X_1)}_\text{$U_2=\textrm{uniqueness in } X_2$},
+\end{align}
+where $I (X_1,X_2; Y) = \int p(x_1,x_2,y) \log \frac{p(x_1,x_2,y)}{p(x_1,x_2) p(y)} dx_1 dx_2 dy$ is the total MI between the joint random variable $X_1,X_2$ and the task $Y$, $S=I(X_1;X_2;Y) = I(X_1;X_2) - I(X_1;X_2|Y) = \int p(x_1,x_2) \log \frac{p(x_1,x_2)}{p(x_1) p(x_2)} dx_1 dx_2 - I(X_1;X_2|Y)$ is the task-relevant shared information, $I(X_1;X_2|Y)=\int p(x_1,x_2|y) \log \frac{p(x_1,x_2|y)}{p(x_1|y) p(x_2|y)} dx_1 dx_2 dy$ is the task-irrelevant shared information, and $U_1=I(X_1;Y|X_2)$, $U_2=I(X_2;Y|X_1)$ denote unique task-relevant information. 
+
+\textbf{Limitations of CL}: Current approaches for CL maximize mutual information $I(X_1;X_2)$ (and subsequently task-relevant shared information $I(X_1;X_2;Y)$ during supervised fine-tuning), without modeling unique information. These methods generally learn a pair of representations \cite{tosh2021contrastive,tsai2020self}, 
+\begin{align}
+    Z_1 = \argmax_{Z_1 := f_\theta(X_1)} I(Z_1;X_2), \quad Z_2 = \argmax_{Z_2 := f_\theta(X_2)} I(X_1;Z_2). \label{eq:standard_cl_z}
+\end{align}
+For example, $Z_1$ could encode images $X_1$ and $Z_2$ encodes text $X_2$ via maximizing a lower bound on $I(X_1;X_2)$ using the NCE objective~\cite{oord2018representation}. The NCE objective falls into a broader class of contrastive learning methods~\cite{chen2020simple,he2020momentum,radford2021learning, chen2021empirical, khosla2020supervised} that model the ratio between joint densities $p(x_1,x_2)$ and product of marginal densities $p(x_1)p(x_2)$ using positive and negative samples~\cite{nguyen2010estimating, poole2019variational, tschannen2019mutual, wu2020mutual, ozair2019wasserstein} or probabilistic classifiers~\cite{mukherjee2020ccmi,tsai2020neural}. It has been shown that contrastive learning works well under the assumption of multi-view redundancy~\cite{sridharan2008information, hjelm2018learning, bachman2019learning, tian2019contrastive, tsai2020self}:
+\begin{definition}
+\label{eq:multiview_redundancy_assump}
+    (Multi-view redundancy) $\exists \epsilon >0$ such that $I(X_1;Y|X_2) \le \epsilon$ and $I(X_2;Y|X_1) \le \epsilon$.
+\end{definition}
+In other words, the task-relevant information in data is mostly shared across both views and the unique information is at most a small $\epsilon$. From a representation perspective, \citet{tian2020makes} further introduces the assumption that the optimal representation is minimal and sufficient, where all learned task-relevant information is shared information: $I(Z_1; Y | X_2)=I(Z_2; Y | X_1)=0$. While the multi-view redundancy is certainly true for particular types of multimodal distributions, it crucially ignores settings that display \textit{multi-view non-redundancy} and unique information can be important, such as when health indicators, medical sensors, and robotic visual or force sensors each provide unique information not present in other modalities~\cite{liang2021multibench,liang2023quantifying}.
+\begin{definition}
+\label{eq:multiview_nonredundancy_assump}
+    (Multi-view non-redundancy) $\exists \epsilon >0$ such that $I(X_1;Y|X_2) > \epsilon$ or $I(X_2;Y|X_1) > \epsilon$.
+\end{definition}
+Under multi-view non-redundancy, we show that standard CL only receives a weak training signal since it can only maximize a lower bound on shared information $I(X_1;X_2)$, and struggles to learn task-relevant unique information. We formalize this intuition with the following statement:
+\begin{theorem}
+\label{thm:suboptimal_eq}
+    (Suboptimality of standard CL) When there is multi-view non-redundancy as in Definition \ref{eq:multiview_nonredundancy_assump}, given optimal representations $\{Z_1,Z_2\}$ that satisfy Eq.(\ref{eq:standard_cl_z} and $I(Z_1; Y | X_2)=I(Z_2; Y | X_1)=0$~\citep{tian2020makes}, we have that
+    {\small
+    \begin{align}
+        I(Z_1,Z_2;Y) = I(X_1,X_2;Y) - I(X_1;Y|X_2) - I(X_2;Y|X_1) = I(X_1;X_2) - I(X_1;X_2|Y)  < I(X_1,X_2;Y). \label{eq:suboptimal_eq}
+    \end{align}}Correspondingly, the Bayes error rate $P_e(Z_1,Z_2):=1 - \mathbb{E}_{p(z_1, z_2)}\left[\max_{y\in Y} P\left(\hat{Y}=y \mid z_1, z_2 \right)\right]$ of contrastive representations $\{Z_1,Z_2\}$ for a downstream task $Y$ is given by:
+    \begin{align}
+        P_e &\le 1 - \exp \left[I(X_1, X_2; Y)- I(X_1;Y|X_2) - I(X_2;Y|X_1)  - H(Y) \right] \\
+        &= 1 - \exp \left[I(X_1;X_2;Y) - H(Y) \right]
+        \label{eq:bayes_error}
+    \end{align}
+\end{theorem}
+We include proofs and a detailed discussion of the assumptions in Appendix \ref{app:discussion_assumption}.
+Based on Eq.(\ref{eq:suboptimal_eq}), $I(Z_1,Z_2;Y)$ decreases with higher task-relevant unique information $I(X_1;Y|X_2)$ and $I(X_2;Y|X_1)$; we call this the difference $I(X_1, X_2 ; Y) - I(Z_1, Z_2; Y)$ the $\textit{uniqueness gap}$. The uniqueness gap measures the loss in task-relevant information between the input and encoded representation: as task-relevant unique information grows, the uniqueness gap increases. In addition, $I(Z_1,Z_2;Y)$ also drops with lower $I(X_1; X_2)$ (i.e., two modalities sharing little information to begin with), or with higher $I(X_1;X_2|Y)$ (i.e., when the shared information is mostly task-irrelevant). Similarly, in Eq.(\ref{eq:bayes_error}), the Bayes error rate of using $\{Z_1,Z_2\}$ for prediction is directly related to the task-relevant information in $\{Z_1,Z_2\}$: error on the downstream task increases with higher unique information and lower shared information.
+
+\vspace{-2mm}
+\section{\namel}
+\vspace{-2mm}
+
+We now present a suite of new CL objectives that alleviate the challenges above and work at all ranges of shared and unique information.
+At a high level, we aim to learn a set of factorized representations $Z_{S_1},Z_{S_2},Z_{U_1},Z_{U_2}$ representing task-relevant information in $X_1$ shared with $X_2$, in $X_2$ shared with $X_1$, unique to $X_1$, and unique to $X_2$ respectively.
+As common in practice~\cite{radford2021learning,tian2020makes}, we define neural networks $f_{\theta}$ with trainable parameters $\theta$ to extract representations from inputs $X_1$ and $X_2$. Learning these parameters requires optimizing differentiable and scalable training objectives to capture task-relevant shared and unique information (see overview in Figure~\ref{fig:method}):
+\begin{align}
+    Z_{S_1} &= \argmax_{Z_1 = f_\theta(X_1)} I(Z_1;X_2;Y), &&Z_{S_2} = \argmax_{Z_2 = f_\theta(X_2)} I(Z_2;X_1;Y), \label{eq:final_objectives1} \\
+    Z_{U_1} &= \argmax_{Z_1 = f_\theta(X_1)} I(Z_1;Y|X_2), &&Z_{U_2} = \argmax_{Z_2 = f_\theta(X_2)} I(Z_2;Y|X_1). \label{eq:final_objectives2}
+\end{align}
+where $I(Z_1;X_2;Y) = I(Z_1; X_2) - I(Z_1; X_2 | Y)$ is the shared information and  $I(Z_2;X_1;Y) = I(Z_2; X_2) - I(Z_2; X_1 | Y)$ is the unique information. One important characteristic of our framework is that when unique information is zero: $I(X_1; Y|X_2) =0$ and $I(X_2; Y|X_1) = 0$, or all shared information is task-relevant: $I(X_1;X_2;Y) = I(X_1; X_2)$, our framework recovers standard CL as in Eq.(\ref{eq:standard_cl_z}). However, as we have previously indicated and will show empirically, these assumptions can easily be violated, and our framework enlarges Eq.(\ref{eq:standard_cl_z}) to cases where unique information is present.
+
+The learned $Z$s can then be used as input to a linear classifier and fine-tuned to predict the label for multimodal classification or retrieval tasks. However, the shared and unique MI terms above are often intractable in practice. In the next section, we will build up our method step by step, eventually showing that each term in Eqs.(\ref{eq:final_objectives1}- \ref{eq:final_objectives2}) can be approximated as follows:
+\begin{align}
+    S = I(X_1; X_2; Y) &\ge I_\textsc{NCE}(X_1;X_2) - I_\textsc{NCE-CLUB}(X_1;X_2|X_1',X_2') \label{eq:shared}\\
+    U_i = I(X_i; Y | X_{-i}) &\ge I_\textsc{NCE}(X_i;X_i') - I_\textsc{NCE-CLUB}(X_1;X_2) + I_\textsc{NCE}(X_1;X_2|X_1',X_2') \label{eq:unique}
+\end{align}
+where $I_\textsc{NCE}$ and $I_\textsc{NCE-CLUB}$ are scalable contrastive estimators (Section \ref{subsec:objectives}) and $X_1',X_2'$ are suitable data augmentations (Section \ref{subsec:unique_aug}) on each modality. Overall, these equations can be interpreted as both positive and negative signals to learn representations for $S$ and $U$. For shared information $S$, the estimator maximizes task-relevant shared information via $I_\textsc{NCE}(X_1;X_2)$ while removing task-irrelevant shared information via a novel upper bound $- I_\textsc{NCE-CLUB}(X_1;X_2|X_1',X_2')$.  For unique information $U_i$, we capture task-relevant uniqueness via $+I_\textsc{NCE}(X_i;X_i')$ while non-unique information is removed via $- (I_\textsc{NCE-CLUB}(X_1; X_2) - I_\textsc{NCE}(X_1;X_2|X_1',X_2'))$.  
+In the following sections, we derive this final objective step-by-step: (1) approximating the MI objectives in $S$ and $U$ with CL estimators, (2) relaxing the dependence on labels $Y$ with self-supervised data augmentations, finally (3) discussing overall training and implementation details of end-to-end self-supervised learning.
+
+\subsection{Supervised \names\ with shared and unique information}
+\label{subsec:objectives}
+
+\input{figures/method_fig}
+
+To capture shared and unique information via an objective function, we will need to maximize lower bounds for all terms with a positive sign in Eq.(\ref{eq:shared}) and (\ref{eq:unique}) $\left( I\left(X_1; X_2\right), I\left(X_i; Y\right), I\left(X_1; X_2 | Y\right)\right)$ and minimize upper bounds for all terms with a negative sign $\left( I\left(X_1; X_2\right), I\left(X_1; X_2 | Y\right)\right)$. Our first theorem derives general lower and upper bounds for MI terms as variants of contrastive estimation: 
+
+\begin{theorem}
+    (Contrastive estimators for $I(X_1; X_2)$) Defining the NCE and NCE-CLUB estimators,
+    \begin{align}
+        I_\textsc{NCE}(X_1; X_2) &= \mathbb{E}_{\substack{x_1,x_2^+ \sim p(x_1,x_2)\\x_2^- \sim p(x_2)}} \left[ \log \frac{\exp f(x_1,x_2^+)}{\sum_k \exp f(x_1, x_2^-)} \right] \label{eq:nce_original}\\
+        I_\textsc{NCE-CLUB}(X_1; X_2) &= \mathbb{E}_{x_1,x_2^+ \sim p(x_1,x_2)} \left[  f^*(x_1,x_2^+) \right] - \mathbb{E}_{\substack{x_1 \sim p(x_1)\\x_2^- \sim p(x_2)}} \left[f^*(x_1,x_2^-) \right] \label{eq:nceclub}
+    \end{align}
+    where $f^*(x_1,x_2)$ is the optimal critic from $I_\textsc{NCE}$ plugged into the $I_\textsc{CLUB}$ objective \cite{cheng2020club}. We call the proposed plug-in objective Eq.(\ref{eq:nceclub}) $I_\textsc{NCE-CLUB}$, and obtain lower and upper bounds on $I(X_1; X_2)$:
+    \begin{align}
+        I_\textsc{NCE}(X_1; X_2) \le I(X_1; X_2) \le I_\textsc{NCE-CLUB}(X_1; X_2).
+    \end{align}
+\end{theorem}
+
+\begin{proof}
+The lower bound $I_\textsc{NCE}(X_1; X_2) \le I(X_1; X_2)$ follows from~\citet{oord2018representation}: optimizing the objective leads to an optimal critic \cite{poole2019variational} $f^* = \log p(x_1 | x_2) + c(x_1)$, with a deterministic function $c(\cdot)$. Plugging optimal critic $f^*$ into $I_\textsc{NCE-CLUB}(X_1; X_2)$ cancels out the $c(x_1)$ term and yields $I_\textsc{NCE-CLUB}(X_1; X_2)$ and $I(X_1; X_2) \le I_\textsc{NCE-CLUB}$. We include a detailed proof in Appendix~\ref{app:method1}.
+\end{proof}
+$I_\textsc{NCE-CLUB}(X_1; X_2)$ gives a desired upper bound of $I(X_1; X_2)$ ``for free'' while avoiding separately optimizing lower bound and upper bounds. In Figure~\ref{fig:bounds}, we show these two bounds in practice across two Gaussian distributions $X_1$ and $X_2$ with varying amounts of MI $I(X_1;X_2)$. We use the second formulation of $I_\textsc{CLUB}$ \cite{cheng2020club}, which assumes $p(x_1|x_2)$ to be unknown.
+Our upper bound is empirically tighter (see Figure~\ref{fig:bounds}) and comes for ``free'' via jointly maximizing the lower bound $I_\textsc{NCE}$. These lower and upper bounds can be seen as new contrastive objectives over positive and negative $(x_1,x_2)$ pairs, enabling a close integration with existing pre-training paradigms.
+Finally, we can similarly obtain bounds for the conditional MI $I_\textsc{NCE}(X_1;X_2|Y) \le I(X_1;X_2|Y) \le I_\textsc{NCE-CLUB}(X_1;X_2|Y)$:
+
+{\small
+\begin{align}
+    I_\textsc{NCE}(X_1;X_2|Y) &= \mathbb{E}_{p(y)} \left[ \mathbb{E}_{\substack{x_1,x_2^+ \sim p(x_1,x_2|y)\\x_2^- \sim p(x_2|y)}} \left[ \log \frac{\exp f(x_1,x_2^+, y)}{\sum_k \exp f(x_1, x_2^-, y)} \right] \right] \label{eq:conditional_nce_supervised} \\
+    I_\textsc{NCE-CLUB}(X_1;X_2|Y) &= \mathbb{E}_{p(y)} \left[ \mathbb{E}_{x_1,x_2^+ \sim p(x_1,x_2|y)} \left[ f^*(x_1,x_2^+, y) \right] - \mathbb{E}_{\substack{x_1 \sim p(x_1|y)\\x_2^- \sim p(x_2|y)}} \left[ f^*(x_1,x_2^-, y) \right] \right] \label{eq:conditional_club_supervised}
+\end{align}
+}
+
+These two bounds result in \textit{conditional CL} objectives \cite{tsailearning, tsai2022conditional, ma2021conditional} - they differ critically from standard CL methods since they capture task-irrelevant shared information that remains between $X_1$ and $X_2$ after observing $Y$. This task-irrelevant shared information is removed by minimizing its upper bound. Note that $f(x_1, x_2, y)$ here denotes a different function from $f(x_1, x_2)$ in Eq.(\ref{eq:nce_original}), as the general forms are different (taking in $x_1, x_2$ versus $x_1, x_2, y$). $f(x_1, x_2, y)$ can be implemented in different ways, e.g., $g([x_1, y])^Th(x_2)$ where $g(), h()$ are trainable encoders and $[x_1, y]$ denotes concatenation \citep{sordoni2021decomposed}. 
+
+\input{figures/bounds_fig}
+
+\subsection{Self-supervised \names\ via multimodal augmentations}
+\label{subsec:unique_aug}
+
+The derivations above bring about supervised CL objectives with access to $Y$~\cite{khosla2020supervised}. For unsupervised CL~\cite{tian2020makes,oord2018representation}, we derive similar objectives without access to $Y$ by leveraging semantic augmentations on each modality. Denote $X'$ as some augmentation of $X$ (e.g., rotating, shifting, or cropping). Under the \textit{optimal augmentation} assumption from~\citet{tian2020makes} (restated below), replacing $Y$ with $X'$ in our formulations enables learning of task-relevant information without access to labels:
+\begin{definition}
+\label{def:optimal_single}
+    (Optimal unimodal augmentation)~\cite{tian2020makes} $X_1'$ is an optimal unimodal augmentation for $X_1$ when $I(X; X') = I(X; Y)$, which implies that the only information shared between $X$ and $X'$ is task-relevant with no irrelevant noise.
+\end{definition}
+This assumption is satisfied when all information shared between $X$ and $X'$ is task-relevant, which implies that the augmentation keeps task-relevant information constant while changing task-irrelevant information. In the case of image classification, task-relevant information is the object in the picture, while task-irrelevant information is the background. 
+By performing two separate unimodal augmentations giving $X_1'$ and $X_2'$, we can substitute contrastive estimators in Eqs.(\ref{eq:conditional_nce_supervised}) and (\ref{eq:conditional_club_supervised}), by replacing $I(X_i;Y)$ terms with $I(X_i;X_i')$ and replacing $I(X_1;X_2|Y)$ terms with  $I(X_1;X_2|X_1', X_2')$:
+{\small
+\begin{align}
+    I_\textsc{NCE}(X_1;X_2|X_1',X_2') &=  \mathbb{E}_{p(x_1', x_2')} \left[ \mathbb{E}_{\substack{x_1,x_2^+ \sim p(x_1,x_2|x_1', x_2')\\x_2^- \sim p(x_2|x_1', x_2')}} \left[ \log \frac{\exp f(x_1,x_2^+, x_1', x_2')}{\sum_k \exp f(x_1, x_2^-, x_1', x_2')} \right] \right] \label{eq:nce_final_ssl} \\
+    I_\textsc{NCE-CLUB}(X_1;X_2|X_1',X_2') &= \mathbb{E}_{p(x_1', x_2')} \Big[ \mathbb{E}_{x_1,x_2^+ \sim p(x_1,x_2|x_1', x_2')} [f^*(x_1,x_2^+, x_1', x_2') ] \nonumber \\
+    &- \mathbb{E}_{\substack{x_1 \sim p(x_1|x_1', x_2')\\x_2^- \sim p(x_2|x_1', x_2')}} [f^*(x_1,x_2^-, x_1', x_2') ] \Big] \label{eq:nceclub_final_ssl}
+\end{align}
+}The objectives can be seen as conditional contrastive learning on augmentations $(X_1',X_2'$). Here again $f(x_1, x_2, x_1', x_2')$ is different from the critics in Eqs.(\ref{eq:conditional_nce_supervised} because of the different general forms. We implement $f()$ here as $g([x_1, x_1'])^Th([x_2, x_2'])$ where $g(), h()$ are trainable encoders specific for each modality and $[x_1, x_1']$ denotes concatenation. This concatenation is justified by the CMI estimators in~\citet{sordoni2021decomposed}, who show that concatenating the conditioning variable with the input in the critic $f(x_1, x_2, x_1', x_2')$ yields a Conditional InfoNCE estimator (Eq.(\ref{eq:nce_final_ssl})) that is a lower bound for CMI. However, the exact Conditional InfoNCE estimator learns a different conditional distribution $p(x_1, x_2 | x_1', x_2')$ for each augmented pair $x_1',x_2'$, which can be prohibitively expensive. We could approximate this by creating multiple augmentations of a single paired $x_1, x_2$. Our code uses one augmented pair $x_1', x_2'$ for each $x_1, x_2$ but could be extended to multiple pairs, and we find this simple approach yields consistent CMI lower and upper bounds that are empirically comparable to existing CMI estimators~\cite{mukherjee2020ccmi,sordoni2021decomposed}. We include full comparisons and implementation details in Appendix~\ref{app:discussion_conditional}, and in Appendix~\ref{app:method2} we discuss an alternative interpretation based on viewing CL as kernel learning which permits using conditional kernel estimation for our objectives.
+
+\input{figures/unique_augment_fig}
+
+Although we find this method to work well in practice, a more careful analysis reveals that $2$ separate unimodal augmentations $X_1'$ and $X_2'$ each satisfying $I(X_i; X_i') = I(X_i; Y)$ do not together satisfy $I(X_1;X_2|Y)=I(X_1;X_2|X_1', X_2')$ needed for the substitution in Eqs.(\ref{eq:nce_final_ssl}) and (\ref{eq:nceclub_final_ssl}) to hold with equality. To satisfy this property exactly, we define optimal multimodal augmentations:
+\begin{definition}
+\label{def:optimal_multi}
+    (Optimal multimodal augmentation) $X_1'$ and $X_2'$ are optimal multimodal augmentation for $X_1$ and $X_2$ when $I(X_1,X_2; X_1',X_2') = I(X_1,X_2; Y)$, which implies that the only information shared between $X_1,X_2$ and $X_1',X_2'$ is task-relevant with no irrelevant noise.
+\end{definition}
+We satisfy $I(X_1,X_2; X_1',X_2') = I(X_1,X_2; Y)$ using two steps:
+\begin{align}
+    \textit{Unimodal aug: } &X_1' \textrm{ s.t. } I(X_1; X_1') = I(X_1; Y), \label{assump:unimodal_aug}\\
+    \textit{Unique aug: } &X_2' \textrm{ s.t. } I(X_2; X_2'|X_1) = I(X_2; Y|X_1). \label{assump:unique_aug}
+\end{align}
+We call the second step \textit{unique augmentation}: after observing $X_1$, we create augmented $X_2'$ from $X_2$ to keep task-relevant information not already in $X_1$. To empirically satisfy optimal multimodal augmentations, we avoid augmentations in one modality that will remove or strongly destroy information shared with the other modality. For example, in image captioning, we should avoid image augmentations such as cropping that destroy information from the caption (e.g., cropping object parts referred to by the caption), and instead, only augment images via flipping or color jittering which retains all caption information. Figure~\ref{fig:augs} shows an example of unique augmentation that satisfies these conditions. In our experiments, we will show that our augmentations consistently perform better than standard augmentations (Table \ref{tab:fig}), suggesting that approximately satisfying Eqs.(\ref{assump:unimodal_aug}) and (\ref{assump:unique_aug}) can be empirically sufficient, which is simple and straightforward to implement on real-world datasets.
+
+\input{figures/alg}
+
+\vspace{-2mm}
+\subsection{Overall method and implementation}
+\vspace{-2mm}
+
+The final algorithm sketch is in Algorithm~\ref{alg:full}, which we compare against standard CL in Algorithm~\ref{alg:standardcl}. It can be shown that \names\ learns all the task-relevant information from both modalities:
+\begin{theorem}
+    (Optimality of \names) If $Z_{S_1},Z_{S_2},Z_{U_1},Z_{U_2}$ perfectly maximize Eqs.(\ref{eq:final_objectives1}-\ref{eq:final_objectives2}) and the estimations in Eqs.(\ref{eq:shared}) and (\ref{eq:unique}) are tight, we obtain $I(X_1, X_2 ; Y) = I(Z_{S_1}; Z_{S_2}; Y) + I(Z_{U_1}; Y | Z_{S_2}) + I(Z_{U_2}; Y | Z_{S_1})$, suggesting that \names\  learns both shared and unique task-relevant information.
+\end{theorem}
+We include the full proof in Appendix~\ref{app:method3}. In practice, while we do not expect perfect estimation of MI quantities and maximization with respect to MI objectives, we include implementation details regarding architectures and contrastive objectives that improve empirical performance in Appendix~\ref{app:implementation}.
+
+\textbf{Complexity}: Compared to heuristic combinations of cross-modal and single-modality CL~\cite{huang2021multilingual,jain2021mural,lee2020parameter,wang2022rethinking,yuan2021multimodal,shan2022ernievil, yang2022unified}, our approach does not significantly increase complexity: (1) upper bounds on MI can be estimated ``for free'' by directly plugging in the optimal critic from $I_\textsc{NCE}$, (2) removal of task-irrelevant information via $I(X_1;X_2|X_1',X_2')$ shares encoders with $I_\textsc{NCE}$, and (3) separate unimodal augmentations perform empirically well. We describe some extensions of other self-supervised methods in Appendix~\ref{app:method5}.
+
+\vspace{-2mm}
+\section{Experiments}
+\vspace{-2mm}
+
+We run comprehensive experiments on a suite of synthetic and large-scale real-world datasets with varying requirements of shared and unique task-relevant information, comparing our \names\ method to key baselines:
+\begin{enumerate}[noitemsep,topsep=0pt,nosep,leftmargin=*,parsep=0pt,partopsep=0pt]
+    \item SimCLR~\cite{chen2020simple}: the straightforward method of cross-modal $(X_1,X_2)$ contrastive learning.
+    \item Cross+Self~\cite{yuan2021multimodal,huang2021multilingual,lee2020parameter,jain2021mural,shan2022ernievil, yang2022unified}: captures a range of methods combining cross-modal $(X_1,X_2)$ CL with additional unimodal $(X_i,X_i')$ CL objectives. This category also includes other ways of preserving unique information, such as through (variational) autoencoder reconstructions~\cite{wang2022rethinking}.
+    \item Cross+Self+Fact~\cite{yuan2021multimodal,yang2022visionlanguage}: A factorized extension of Cross+Self, which is approximately done in prior work that adds separate (typically pre-trained) unimodal encoders for each modality.
+    \item SupCon~\cite{khosla2020supervised}, which learns $I(X_1;X_2|Y)$ using CL conditioned on $Y$ from labeled data.
+\end{enumerate}
+We also carefully ablate each component of our method and investigate factors, including training data size and choice of augmentations. The intermediate ablations that emerge include:
+\begin{enumerate}[noitemsep,topsep=0pt,nosep,leftmargin=*,parsep=0pt,partopsep=0pt]
+    \item \names-SUP: The supervised CL version which uses labels $Y$ in Eqs.(\ref{eq:conditional_nce_supervised}) and (\ref{eq:conditional_club_supervised}).
+    \item \names-SSL: The fully self-supervised version of our approach replacing $Y$ with multimodal augmentations $X_1'$ and $X_2'$ to approximate the task.
+    \item OurCL-SUP: \names-SUP but removing the factorization so only two features $Z_1$ is optimized for both $I(X_1;X_2;Y)$ and $I(X_1;Y|X_2)$, $Z_2$ optimized for both $I(X_1;X_2;Y)$ and $I(X_2;Y|X_1)$.
+    \item OurCL-SSL: \names-SSL but also removing the factorization in the self-supervised setting.
+\end{enumerate}
+The formulation of each ablation and implementation can be found in Appendix~\ref{app:implementation}.
+
+\vspace{-1mm}
+\subsection{Controlled experiments on synthetic datasets}
+\vspace{-1mm}
+
+\textbf{Synthetic data generation}: We begin by generating data with controllable ratios of task-relevant shared and unique information. Starting with a set of latent vectors $w_1, w_2, w_s \sim \mathcal{N}(0_d, \Sigma_d^2), d=50$ representing information unique to $X_1,X_2$ and common to both respectively, the concatenated vector $[w_1,w_s]$ is transformed into high-dimensional $x_1$ using a fixed transformation $T_1$ and likewise $[w_2,w_s]$ to $x_2$ via $T_2$. The label $y$ is generated as a function (with nonlinearity and noise) of varying ratios of $w_s$, $w_1$, and $w_2$ to represent shared and unique task-relevant information.
+
+\textbf{Results}: In Figure~\ref{fig:overview}, we show our main result on synthetic data comparing \names\ with existing CL baselines. \names\ consistently maintains the best performance, whereas SimCLR~\cite{chen2020simple} and SupCon~\cite{khosla2020supervised} see performance drops as unique information increases. Cross+Self~\cite{yuan2021multimodal,huang2021multilingual,lee2020parameter,jain2021mural} recovers in fully unique settings (x-axis$=1.0$) but suffers at other ratios.
+
+\input{tables/probing}
+
+\textbf{Representation probing information}: We run a probing experiment to compute how well different contrastive representations capture shared and unique information. In Table~\ref{tab:probing}, for the $Z_i$'s learned by each method, we approximately compute $I(Z_i;w_1)$, $I(Z_i;w_2)$, and $I(Z_i;w_s)$ with respect to ground truth generative variables $w_s$, $w_1$, and $w_2$. As expected, existing methods such as SimCLR capture smaller amounts of unique information (roughly $4$ bits in $I(Z_i;w_1)$ and $I(Z_i;w_2)$), focusing instead on learning $I(Z_i;w_s)$ (12 bits). Cross+self captures slightly larger $I(Z_i;w_2)=4.26$, and SupCon with labeled data captures up to $5$ bits of unique information. Our \names\ approach captures $7$ bits of unique information and maintains $10$ bits of shared information, with total information captured higher than the other approaches. Furthermore, $\{Z_{S_1},Z_{S_2}\}$ capture more information about $w_s$, $Z_{U_1}$ about $w_1$, and $Z_{U_2}$ about $w_2$, indicating that factorization in our approach is successful.
+
+\vspace{-1mm}
+\subsection{Self-supervised multimodal learning with low redundancy and high uniqueness}
+\vspace{-1mm}
+
+\textbf{Multimodal fusion datasets}: We use a large collection of real-world datasets provided in MultiBench~\citep{liang2021multibench}, where we expect varying ratios of shared and unique information important for the task, to compare \names\ with other CL baselines:
+\begin{enumerate}[noitemsep,topsep=0pt,nosep,leftmargin=*,parsep=0pt,partopsep=0pt]
+    \item \textsc{MIMIC}~\cite{johnson2016mimic}: mortality and disease prediction from $36,212$ medical records (tabular patient data and medical time-series sensors from ICU).
+
+    \item \textsc{MOSEI}~\cite{zadeh2018multimodal}: multimodal sentiment and emotion benchmark with $23,000$ monologue videos.
+
+    \item \textsc{MOSI}~\cite{zadeh2016mosi}: multimodal sentiment analysis from $2,199$ YouTube videos.
+
+    \item \textsc{UR-FUNNY}~\citep{hasan2019ur}: a dataset of humor detection from more than $16,000$ TED talk videos.
+
+    \item \textsc{MUsTARD}~\citep{castro2019towards}: a corpus of $690$ videos for research in sarcasm detection from TV shows.
+
+    \item \textsc{IRFL}~\cite{yosef2023irfl}: $6,697$ matching images and figurative captions (rather than literal captions).
+\end{enumerate}
+Together, these datasets cover seven different modalities from the healthcare, affective computing, and multimedia research areas and total more than $84,000$ data points.
+For \textsc{MIMIC} with tabular and medical sensor inputs, we train self-supervised CL models on top of raw modality inputs.
+For \textsc{IRFL} with image and caption inputs, we start with a pretrained CLIP model~\cite{radford2021learning} and perform continued pre-training to update CLIP weights with our \names\ objectives, before linear classifier testing. For the remaining four video datasets, we train self-supervised CL models starting from standard pre-extracted text, video, and audio features~\cite{liang2021multibench}. Please refer to Appendix~\ref{appendix:data} for experimental details. We release our code and models at \url{https://github.com/pliang279/FactorCL}.
+
+\textbf{Multimodal fusion results}: From Table~\ref{tab:fusion}, \names\ significantly outperforms the baselines that do not capture both shared and unique information in both supervised and self-supervised settings, particularly on \textsc{MuStARD} (where unique information expresses sarcasm, such as sardonic facial expressions or ironic tone of voice), and on \textsc{MIMIC} (with unique health indicators and sensor readings).
+In Table~\ref{tab:fig}, we also show that \names\ substantially improves the state-of-the-art in classifying images and figurative captions which are not literally descriptive of the image on \textsc{IRFL}, outperforming zero-shot and fine-tuned CLIP~\cite{radford2021learning} as well as continued pre-training baselines on top of CLIP.
+
+\input{tables/fusion}
+
+\textbf{Modeling ablations}: 
+In Table~\ref{tab:fusion}, we also carefully ablate each component in our method and indicate either existing baselines or newly-run ablation models.
+\begin{enumerate}[noitemsep,topsep=0pt,nosep,leftmargin=*,parsep=0pt,partopsep=0pt]
+    \item \textbf{Factorized representations}: In comparing \names-SSL with OurCL-SSL, and also \names-SUP with OurCL-SUP, we find that factorization is critical: without it, performance drops on average $6.1\%$, with performance drop as high as $8.6\%$ for \textsc{MIMIC}.
+    \item \textbf{Information removal via upper bound}: By comparing \names\ with  SimCLR, Cross+Self, and Cross+Self+Fact, and SupCon that only seek to capture task-relevant information via contrastive lower bounds on MI, we find that separately modeling the task-relevant information (to be captured) and task-irrelevant information (to be removed) is helpful. Without removing task-irrelevant information via the upper-bound objective, performance drops on average $13.6\%$, with performance drops as high as $23.5\%$ for the \textsc{MOSI} dataset. We also found that training was more difficult without this objective, which is expected due to overwhelming superfluous information from the dataset \cite{zadeh2018multimodal}.
+    \item \textbf{Multimodal augmentations}: Finally, we investigate the differences between separate unimodal augmentations (\names-IndAug in  Table~\ref{tab:fig}) versus a joint multimodal augmentation (\names-SSL) on the \textsc{IRFL} dataset. We choose this dataset since its images and captions are the easiest to visualize (see Figure~\ref{fig:augs} for augmentations from both strategies).
+    In the self-supervised setting, we find that multimodal augmentations achieve $95\%$ performance, higher than the $92\%$ for separate unimodal augmentations, and both outperform baselines SimCLR and Cross+Self.
+\end{enumerate}
+
+\input{tables/clip}
+
+\textbf{Ablations on $S, U_1$ and $U_2$}:
+In Table~\ref{tab:ablations}, we also test \names\ when training linear classifiers on top of only shared $\{Z_{S_1},Z_{S_2}\}$ and unique $Z_{U_1}$, $Z_{U_2}$ separately. We call these models \names-$S$, \names-$U_1$, and \names-$U_2$.
+Immediately, we observe that performance drops as compared to the full \names\ model, indicating that both shared and unique information are critical in real-world multimodal tasks. 
+As expected, the best-performing submodel is the one that captures the region with the largest amount of task-relevant information: \textsc{MOSEI} and \textsc{MOSI} are known to include a lot of redundancy and unique information since language is very important for detecting sentiment~\cite{zadeh2018multimodal}, so \names-$S$ and \names-$U_2$ perform best. For sarcasm detection on \textsc{MuStARD}, video information is most important with \names-$U_1$ performing best ($59.4\%$), and ablation models are also the furthest away from full multimodal performance ($69.9\%$). This is aligned with intuition where sarcasm is expressed through tone of voice and visual gestures (high $U_1$), as well as from contradictions between language and video (higher multimodal performance).
+
+\input{tables/ablations}
+
+\textbf{Additional results}: In Appendix~\ref{appendix:results}, we also verify \names\ in settings with abundant shared information, where we expect to recover the same performance as standard CL~\cite{chen2020simple,oord2018representation,tian2020makes}.
+
+\vspace{-3mm}
+\section{Related Work}
+\vspace{-3mm}
+
+\textbf{Contrastive learning} is a successful self-supervised learning paradigm for computer vision~\cite{oord2018representation,chen2020simple,he2020momentum,grill2020bootstrap,chen2021exploring,caron2020unsupervised}, natural language~\cite{gao2021simcse, meng2021coco, neelakantan2022text}, speech~\cite{oord2018representation, schneider2019wav2vec, baevski2020wav2vec}, and multimodal tasks~\cite{radford2021learning, jia2021scaling, akbari2021vatt}. Its foundational underpinnings are inspired by work in multiview information theory~\cite{federici2020learning,khosla2020supervised,sridharan2008information,tian2020makes,tsai2020self} studying the shared information between two views and whether they are necessary or sufficient in predicting the label. Recently,~\citet{wang2022rethinking} and~\citet{kahana2022contrastive} discuss the limitations of assuming multiview redundancy and propose autoencoder reconstruction or unimodal contrastive learning to retain unique information, which resembles the Cross+self baselines in our experiments. We refer the reader to~\citet{shwartz2023compress} for a comprehensive review on multiview and contrastive learning. Our work also relates to conditional contrastive learning \cite{tsai2022conditional, ma2021conditional, ye2022contrastive, chi2022conditional}, where positive or negative pairs are supposed to sample from conditional distributions. 
+
+\textbf{Multimodal contrastive learning} aims to align related data from different modalities, typically provided as positive pairs. This could be done via optimizing a contrastive objective for inter-modality pairs \cite{radford2021learning,alayrac2020self, akbari2021vatt, jia2021scaling}, or both intra- and inter-modality data pairs \cite{yuan2021multimodal, huang2021multilingual, lee2020parameter, jain2021mural, kim2022transferring}. Our work also relates to factorized representation learning, which primarily studies how to capture modality-specific information primarily in each modality and multimodal information redundant in both modalities~\cite{hsu2018disentangling,tsai2018learning}. Prior work has used disentangled latent variable models~\cite{Bengio:2013:RLR:2498740.2498889,higgins2016beta,hsu2018disentangling,tsai2018learning}, mixture-of-experts~\cite{shi2019variational}, or product-of-experts~\cite{wu2018multimodal} layer to explain factors in multimodal data.
+
+\textbf{Information theory} \cite{cover1991information,shannon1948mathematical} has been used to study several phenomena in multimodal learning, including co-learning~\cite{zadeh2020foundations, rahate2022multimodal} and multi-view learning~\cite{tsai2020self, huang2021makes}. Due to its theoretical importance, several lower and upper bounds have been proposed for practical estimation~\cite{oord2018representation,wu2020mutual,poole2019variational,ozair2019wasserstein}. One particular upper bound is given by~\citet{cheng2020club}, which we build on to create a more accurate and stable bound.
+Our characterizations of shared and unique information are also related to partial information decomposition \cite{williams2010nonnegative}, co-information \cite{bell2003co, vergara2014review}, and interaction information \cite{mcgill1954multivariate} research.
+
+\vspace{-3mm}
+\section{Conclusion}
+\vspace{-3mm}
+
+This paper studied how standard CL methods suffer when task-relevant information lies in regions unique to each modality, which is extremely common in real-world applications such as sensor placement, medical testing, and multimodal interaction. In response, we proposed \names, a new method expanding CL techniques through the use of factorized representations, removing task-irrelevant information via upper bounds on MI, and multimodal data augmentations suitable for approximating the unobserved task. Based on \names's strong performance, there are several exciting directions in extending these ideas for masked and non-contrastive pre-training; we further discuss broader impacts and limitations of this line of work in Appendix~\ref{sec:impact}.
+
+\vspace{-2mm}
+\section*{Acknowledgements}
+\vspace{-2mm}
+
+This material is based upon work partially supported by Meta, National Science Foundation awards 1722822 and 1750439, and National Institutes of Health awards R01MH125740, R01MH132225, R01MH096951 and R21MH130767.
+PPL is supported in part by a Siebel Scholarship and a Waibel Presidential Fellowship.
+RS is supported in part by ONR grant N000142312368 and DARPA FA87502321015.
+One of the aims of this project is to understand the comfort zone of people for better privacy and integrity.
+Any opinions, findings, conclusions, or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the sponsors, and no official endorsement should be inferred. Finally, we would also like to acknowledge feedback from anonymous reviewers who significantly improved the paper and NVIDIA’s GPU support.
+
+{\small
+\bibliographystyle{plainnat}
+\bibliography{refs}
+}
+
+\clearpage
+
+\input{supp}
+
+\end{document}
