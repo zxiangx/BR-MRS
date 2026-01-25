@@ -136,20 +136,36 @@ Extensive experiments on three benchmark datasets demonstrate that BR-MRS signif
     
 %     \item \textbf{State-of-the-Art Performance.} Extensive experiments on three public benchmarks demonstrate that BR-MRS consistently outperforms existing methods, achieving relative improvements of up to 23.1\% in NDCG@10. Ablation studies further validate the complementary contributions of each proposed component.
 % \end{itemize}
-Multimodal recommendation systems integrate heterogeneous item modalities such as visual and textual content, and have been shown to substantially improve personalized ranking performance. Different modalities capture distinct aspects of the same item, which naturally leads to modality inconsistency. Such inconsistency can be beneficial when modality-specific differences provide complementary signals for distinguishing positive and negative items, or harmful when it arises from noise that mislead recommendation. Based on this observation, we categorize such inconsistency into two types: \textbf{informative inconsistency}, which enhances ranking discrimination, and \textbf{noisy inconsistency}, which degrades ranking performance. The central challenge in multimodal recommendation is to exploit informative inconsistency while suppressing noisy inconsistency under a personalized ranking objective.
 
-Existing methods address modality inconsistency from several perspectives. Early approaches rely on modality-independent modeling with late fusion, which limits cross-modal interaction and struggles on hard negatives that require modality complementarity. More recent work introduces self-supervised objectives to enforce cross-modal consistency, improving stability but often emphasizing alignment rather than exploiting informative inconsistency for ranking. Other approaches attempt to preserve modality-specific information via explicit decoupling mechanisms, such as orthogonality constraints or modality-specific subspaces; however, these designs are typically not aligned with ranking objectives and offer no guarantee that informative inconsistency translates into ranking gains.
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figure/motivation.png}
+  \caption{Illustration of two phenomena associated with modality inconsistency. \textbf{(1) Under-exploited informative inconsistency.} A user prefers a red T-shirt; two candidates are indistinguishable in text but differ in image color, yet the model misses this cross-modal cue and mis-ranks a hard negative. \textbf{(2) Noisy inconsistency harms fusion.} A user prefers a floral dress; text alone separates items correctly, but noisy visual resemblance of the negative misleads multimodal fusion, causing fusion degeneration.}
+  \label{fig:motivation}
+\end{figure}
+% motivation graph:
+% Illustration of two phenomena associated with modality inconsistency. (1) Informative inconsistency is under-exploited. 用户喜欢的商品是一件红色的T-shirt，推荐系统此时需要对两件商品进行判别。两件商品在文本模态上没有差别，但在视觉模态上可以对他们的颜色进行区分。然后推荐系统并没有捕捉到视觉模态和文本模态之间的”颜色“这一信息性不一致，导致他无法区分两件商品从而推荐错误。(2) Noisy inconsistency harms fusion. 用户喜欢的商品是一件floral dress，并且推荐系统之前已经学习过相关的用户特征，对其想要的商品本身有了解。当收到两件商品时，可以看出两件商品在文本模态上是能够正常区分的，推荐系统可以使用文本这一单一模态进行正确的推荐。但引入图像信息之后，由于negative item用户喜欢的商品在视觉模态的噪声部分上重复度高，因此误导推荐系统推荐错误。
+Multimodal recommendation systems integrate heterogeneous item modalities (e.g., visual and textual content) and have been shown to substantially improve personalized ranking performance~\cite{zhou2023freedom, zhou2023bm3, GNN}. Different modalities capture distinct aspects of the same item, which naturally leads to \emph{modality inconsistency}. Such inconsistency can be \emph{beneficial} when modality-specific differences provide complementary evidence for recommendation, yet it can also be \emph{harmful} when it originates from noise and introduces misleading signals. Based on this observation, we distinguish two types of inconsistency: \textbf{informative inconsistency}, which provides discriminative cues for ranking, and \textbf{noisy inconsistency}, which impairs ranking performance. Therefore, a central challenge in multimodal recommendation is: 
 
-To address these challenges, we propose BR-MRS, a multimodal recommendation framework. We first introduce Cross-modal Hard Negative Sampling (CHNS), which constructs hard negatives across modalities and explicitly drives the model to exploit modality-specific differences that are discriminative for ranking, thereby enhancing the utilization of informative inconsistency. We further propose a Synergy-aware BPR Loss to alleviate fusion degeneration, which constrains the fused representation to outperform each unimodal branch in distinguishing positive and negative items, thereby suppressing the impact of noisy inconsistency on multimodal fusion.
+\begin{center}
+  \textbf{\emph{When a single modality is insufficient, how can we exploit informative inconsistency while suppressing noisy inconsistency?}}
+\end{center}
+
+
+Existing solutions tackle modality inconsistency from different perspectives. Some studies adopt \emph{modality-independent modeling} with independent encoders and late fusion~\cite{zhou2023freedom, GNN}, which can partially prevent modality-specific noise from propagating, but it restricts cross-modal interaction and makes it difficult to both avoid the harm of noisy inconsistency and fully utilize informative inconsistency. More recent approaches introduce self-supervised objectives such as contrastive learning (e.g., InfoNCE~\cite{oord2018representation}) and diffusion models to \emph{explicitly enforce cross-modal consistency}~\cite{zhou2023bm3, zhang2024fettle, diffmm, xu2025mentor, mmgcl2022}. These methods largely treat all inconsistency as noise: while effective at suppressing misleading signals, they also discard modality-differentiated characteristics. As a result, when one modality alone cannot fully capture user preference, purely alignment-driven strategies may fail to excavate and utilize informative cross-modal differences, limiting further ranking gains.
+
+Our empirical analysis further reveals two noteworthy phenomena that expose these limitations. \textbf{(1) Informative inconsistency is under-exploited.} We observe many mis-ranked items (i.e., \emph{hard negatives}) that appear highly similar to the target in \emph{one} modality, but exhibit clear differences in \emph{another} modality. This indicates that \emph{informative inconsistency} can provide discriminative cues that could resolve confusion, yet alignment-dominant designs tend to wash them out, leading to ranking mistakes. \textbf{(2) Noisy inconsistency harms fusion.} In some cases, a unimodal representation can successfully retrieve the target item, while the fused multimodal representation fails. This indicates that fusion without explicitly separating \emph{noisy inconsistency} from informative signals may propagate spurious cross-modal conflicts, thereby missing complementarity and even weakening unimodal advantages.
+
+To address these challenges, we propose \textbf{BR-MRS}, a multimodal recommendation framework that reconstructs the classic Bayesian Personalized Ranking objective (BPR loss) to explicitly separate and utilize modality inconsistency. Specifically, we design \emph{Cross-modal Hard Negative Sampling} (CHNS) to construct challenging negatives across modalities, explicitly guiding the model to attend to modality-specific differences that are valuable for ranking, thereby better capturing and exploiting \emph{informative inconsistency}. Furthermore, to mitigate fusion degeneration, we propose a \emph{Synergy-aware BPR Loss} that constrains the fused multimodal representation to be \emph{significantly better} than each unimodal branch at separating positives from negatives, thereby suppressing the adverse effect of \emph{noisy inconsistency} and improving multimodal fusion.
 
 
 Our contributions are summarized as follows:
 \begin{itemize}
-    \item \textbf{New Findings.} We identify and analyze the limitations of existing multimodal recommendation systems in exploiting informative inconsistency and suppressing noisy inconsistency, and show how these limitations lead to cross-modal complementarity failure and fusion degeneration.
+    \item \textbf{New Findings.} We explicitly distinguish \emph{informative} versus \emph{noisy} modality inconsistency, and empirically show that prior multimodal recommenders often under-exploit the former and are vulnerable to the latter.
     
     \item \textbf{Novel Method.} We propose \textbf{BR-MRS}, which combines cross-modal hard negative sampling to activate informative inconsistency with a synergy-aware ranking objective that constrains the fused representation to outperform unimodal branches.
     
-    \item \textbf{State-of-the-Art Performance.} Extensive experiments on multiple benchmarks demonstrate that \textbf{BR-MRS} consistently outperforms state-of-the-art methods, with ablations and case studies validating the effectiveness of each component.
+    \item \textbf{Impressive Performance.} Extensive experiments on multiple benchmarks demonstrate that \textbf{BR-MRS} consistently outperforms state-of-the-art methods, with ablations and case studies validating the effectiveness of each component.
 \end{itemize}
 
 \section{Related Work}
@@ -289,7 +305,7 @@ In this section, we present \textbf{BR-MRS}, a multimodal recommendation framewo
 An overview is illustrated in Fig.~\ref{fig:framework}.
 \begin{figure*}[t]
     \centering
-    \includegraphics[width=\textwidth]{figure/OverView.png}
+    \includegraphics[width=\textwidth]{figure/OverView_1.png}
     \caption{\textbf{Overview of BR-MRS.}}
     \label{fig:framework}
 \end{figure*}
@@ -309,8 +325,8 @@ Algorithm~\ref{alg:brmrs} summarizes the overall training procedure.
     \FOR{each $(u,i^+)\in\mathcal{O}$}
         \STATE Sample candidate negatives $\mathcal{N}(u)\subseteq \mathcal{I}\setminus\mathcal{O}_u$
         \STATE Compute unimodal and fused scores $s_t(u,\cdot)$, $s_v(u,\cdot)$, $s_f(u,\cdot)$
-        \STATE $j_v \leftarrow \arg\max_{j\in \mathcal{N}(u)} s_v(u,j)$
-        \STATE $j_t \leftarrow \arg\max_{j\in \mathcal{N}(u)} s_t(u,j)$
+        \STATE $i^-_v \leftarrow \arg\max_{j\in \mathcal{N}(u)} s_v(u,j)$
+        \STATE $i^-_t \leftarrow \arg\max_{j\in \mathcal{N}(u)} s_t(u,j)$
         \STATE Sample a negative $i^- \in \mathcal{N}(u)$ for $\mathcal{L}_{\mathrm{syn}}$
         \STATE Compute $\mathcal{L}_{\mathrm{chns}}$ and $\mathcal{L}_{\mathrm{syn}}$
         \STATE Update $\Theta$ by minimizing $\mathcal{L}=\lambda_h\mathcal{L}_{\mathrm{chns}}+\lambda_s\mathcal{L}_{\mathrm{syn}}+\lambda\lVert\Theta\rVert_2^2$
@@ -329,34 +345,32 @@ To this end, we propose \emph{Cross-modal Hard Negative Sampling}~(CHNS), which 
 Specifically, for each positive pair $(u,i^+)\in\mathcal{O}$, we first sample a candidate negative pool $\mathcal{N}(u)\subseteq \mathcal{I}\setminus\mathcal{O}_u$, and then identify the most confusable negative under each modality:
 \begin{equation}
 \begin{aligned}
-j_v(u,i^+) &= \arg\max_{j\in \mathcal{N}(u)} s_v(u,j), \\
-j_t(u,i^+) &= \arg\max_{j\in \mathcal{N}(u)} s_t(u,j).
+i_v^-(u,i^+) &= \arg\max_{j\in \mathcal{N}(u)} s_v(u,j), \\
+i_t^-(u,i^+) &= \arg\max_{j\in \mathcal{N}(u)} s_t(u,j).
 \end{aligned}
 \end{equation}
 Here, $j_v$ denotes the negative that is hardest to distinguish from the positive under the visual modality, while $j_t$ denotes the most confusable negative under the textual modality.
 We then \emph{swap} these confusable negatives to train the \emph{other} modality branch, explicitly requiring each modality to contribute its unique information as discriminative evidence:
-\begin{equation}
-\begin{aligned}
-\mathcal{L}_{\mathrm{chns}}
-&=
--\sum_{(u,i^+)\in\mathcal{O}} \Bigl[ \\
-&\quad \log \sigma\!\Bigl(s_t(u,i^+) - s_t\bigl(u,j_v(u,i^+)\bigr)\Bigr) \\
-&\quad + \log \sigma\!\Bigl(s_v(u,i^+) - s_v\bigl(u,j_t(u,i^+)\bigr)\Bigr)
-\Bigr].
-\end{aligned}
-\label{eq:chns}
-\end{equation}
-The first term requires the textual modality to discriminate negatives that confuse the visual modality; the second term requires the visual modality to resolve textually confusable cases.
-Through this cross-modal supervision design, CHNS explicitly exploits informative inconsistency by forcing each modality to leverage its unique discriminative strengths for personalized ranking.
+% \begin{equation}
+% \begin{aligned}
+% \mathcal{L}_{\mathrm{chns}}^v = -\sum_{(u,i^+)\in\mathcal{O}}  \log \sigma\!\Bigl(s_v(u,i^+) - s_v\bigl(u,i_t^-(u,i^+)\bigr)\Bigr) \\
+% \mathcal{L}_{\mathrm{chns}}^t = -\sum_{(u,i^+)\in\mathcal{O}}  \log \sigma\!\Bigl(s_t(u,i^+) - s_t\bigl(u,i_v^-(u,i^+)\bigr)\Bigr) \\
+% \mathcal{L}_{\mathrm{chns}} = \mathcal{L}_{\mathrm{chns}}^v + \mathcal{L}_{\mathrm{chns}}^t
+% \end{aligned}
+% \label{eq:chns}
+% \end{equation}
+\begin{gather}
+  \mathcal{L}_{\mathrm{chns}}^v = -\sum_{(u,i^+)\in\mathcal{O}}  \log \sigma\!\Bigl(s_v(u,i^+) - s_v\bigl(u,i_t^-(u,i^+)\bigr)\Bigr) \nonumber \\
+  \mathcal{L}_{\mathrm{chns}}^t = -\sum_{(u,i^+)\in\mathcal{O}}  \log \sigma\!\Bigl(s_t(u,i^+) - s_t\bigl(u,i_v^-(u,i^+)\bigr)\Bigr) \nonumber \\
+  \mathcal{L}_{\mathrm{chns}} = \mathcal{L}_{\mathrm{chns}}^v + \mathcal{L}_{\mathrm{chns}}^t 
+  \label{eq:chns}
+  \end{gather}
+$\mathcal{L}_{\mathrm{chns}}^v$ requires the visual modality to discriminate negatives that confuse the textual modality; $\mathcal{L}_{\mathrm{chns}}^t$ requires the textual modality to resolve visually confusable cases. Through this cross-modal supervision design, CHNS explicitly exploits informative inconsistency by forcing each modality to leverage its unique discriminative strengths for personalized ranking.
 
 \subsection{Synergy-aware BPR Loss}
-While CHNS exploits informative inconsistency, we must also address noisy inconsistency that can degrade fusion performance.
-Prior work directly applies BPR loss on the fused representation, overlooking the potential performance degradation after multimodal fusion (i.e., the $\mathcal{U}_r$ regime identified in our empirical study).
-Such degradation occurs when noisy inconsistency misleads the fusion process, causing the fused representation to perform worse than individual modalities.
-To suppress the impact of noisy inconsistency, we propose a \emph{Synergy-aware BPR Loss} that constrains the fused representation to outperform each unimodal branch, thereby alleviating fusion degeneration.
-
-Specifically, we enforce a strict preference margin constraint on the fused representation such that the fused branch exhibits a stronger discriminative advantage over unimodal branches.
-For a training triple $(u,i^+,i^-)$, we define the preference margins:
+CHNS targets \emph{informative} inconsistency via cross-modal hard negatives; however, multimodal fusion can still \emph{degenerate} when noisy inconsistency misleads the fusion process.
+We therefore propose a \emph{Synergy-aware BPR Loss} that enforces a strict preference-margin constraint: the fused branch must achieve a margin larger than the strongest unimodal branch by a positive gap $\theta$.
+For a training triple $(u,i^+,i^-)$ where $i^-$ is sampled from $\mathcal{N}(u)$ uniformly, we define the preference margins:
 \begin{equation}
 \label{eq:margins}
 \begin{aligned}
@@ -431,7 +445,8 @@ LGMRec   & 0.0644 & 0.1002 & 0.0349 & 0.0440 & 0.0720 & 0.1068 & 0.0390 & 0.0480
 DRAGON   & 0.0662 & 0.1021 & 0.0345 & 0.0435 & 0.0752 & 0.1139 & 0.0413 & 0.0512 & 0.0671 & 0.0979 & 0.0365 & 0.0443 \\
 MIG-GT   & 0.0665 & 0.1021 & 0.0361 & 0.0452 & 0.0753 & 0.1130 & 0.0414 & 0.0511 & 0.0636 & 0.0934 & 0.0347 & 0.0422 \\
 
-REARM    & \underline{0.0705} & \underline{0.1105} & \underline{0.0377} & \underline{0.0479} & \underline{0.0836} & \underline{0.1231} & \underline{0.0455} & \underline{0.0553} & \underline{0.0700} & \underline{0.0998} & \underline{0.0377} & \underline{0.0454} \\
+REARM    & 0.0705 & \underline{0.1105} & 0.0377 & 0.0479 & \underline{0.0836} & \underline{0.1231} & \underline{0.0455} & \underline{0.0553} & 0.0700 & 0.0998 & 0.0377 & 0.0454 \\
+SSR      & \underline{0.0728} & 0.1103 & \underline{0.0395} & \underline{0.0491} & 0.0825 & 0.1203 & 0.0449 & 0.0547 & \underline{0.0708} & \underline{0.1032} & \underline{0.0386} & \underline{0.0466} \\
 \midrule
 \rowcolor{rowhighlight}
 \best{BR-MRS}   & \best{0.0819} & \best{0.1215} & \best{0.0452} & \best{0.0554}   &  --    &  --    &  --    &  --    &  --    &  --    &  --    &  --    \\
