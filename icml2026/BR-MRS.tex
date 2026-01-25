@@ -1,0 +1,620 @@
+%%%%%%%% ICML 2026 EXAMPLE LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+
+% Recommended, but optional, packages for figures and better typesetting:
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs} % for professional tables
+\usepackage[table]{xcolor}
+\usepackage{multirow}
+\usepackage{pifont}
+\definecolor{CadetBlue}{HTML}{5F9EA0}
+
+% hyperref makes hyperlinks in the resulting PDF.
+\usepackage{hyperref}
+
+% Algorithms
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% Attempt to make hyperref and algorithmic work together better:
+\providecommand{\theHalgorithm}{\arabic{algorithm}}
+\definecolor{tableheader}{HTML}{EDF1F6}
+\definecolor{rowhighlight}{HTML}{E8F2FF}
+\definecolor{bestblue}{HTML}{1F4E79}
+\definecolor{secondorange}{HTML}{B35C00}
+\newcommand{\best}[1]{\textcolor{bestblue}{\textbf{#1}}}
+\newcommand{\second}[1]{\textcolor{secondorange}{\textbf{#1}}}
+\newcommand{\method}{\textsc{LiM}}
+\newcommand{\wtd}{\textsc{WTD}}
+
+% Use the following line for the initial blind version submitted for review:
+\usepackage{icml2026}
+
+% For preprint, use
+% \usepackage[preprint]{icml2026}
+
+% If accepted, instead use the following line for the camera-ready submission:
+% \usepackage[accepted]{icml2026}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+
+% if you use cleveref..
+\usepackage[capitalize,noabbrev]{cleveref}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THEOREMS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+
+\usepackage[textsize=tiny]{todonotes}
+
+\icmltitlerunning{}
+
+\begin{document}
+
+\twocolumn[
+  \icmltitle{BR-MRS: Synergy-Aware Multimodal Recommendation with Cross-Modal Hard Negatives}
+
+  \icmlsetsymbol{equal}{*}
+
+  \begin{icmlauthorlist}
+    \icmlauthor{Author One}{aff1}
+    \icmlauthor{Author Two}{aff1,aff2}
+  \end{icmlauthorlist}
+
+  \icmlaffiliation{aff1}{Department, University, City, Country}
+  \icmlaffiliation{aff2}{Company, City, Country}
+
+  \icmlcorrespondingauthor{Author One}{author@email.com}
+
+  \icmlkeywords{Machine Learning, ICML}
+
+  \vskip 0.3in
+]
+
+\printAffiliationsAndNotice{}
+
+\begin{abstract}
+Multimodal recommendation systems integrate visual and textual features to enhance personalized ranking. 
+However, existing methods that directly transfer components from general multimodal learning---such as InfoNCE-style alignment and orthogonality-based decorrelation---fail to explicitly capture \emph{modality-unique} and \emph{synergistic} information under the user-conditioned ranking objective.
+Through systematic empirical analysis, we reveal that stronger orthogonality regularization does not yield richer unique information but instead shifts learning toward redundant components, while contrastive alignment provides little incentive for synergistic signals that emerge only through fusion.
+To address these limitations, we propose \textbf{BR-MRS}, a multimodal recommendation framework with two core designs: (i)~\emph{Cross-modal Hard Negative Sampling} (CHNS), which assigns each unimodal branch the task of resolving confusable cases identified by the other modality, thereby explicitly activating modality-specific evidence; and (ii)~a \emph{Synergy-aware BPR Loss} that enforces a larger preference margin for the fused representation than any single-modality branch, explicitly encouraging synergistic learning.
+Extensive experiments on three benchmark datasets demonstrate that BR-MRS significantly outperforms state-of-the-art methods, achieving up to 23.1\% improvement in NDCG@10.
+\end{abstract}
+\section{Introduction}
+
+% Multimodal recommendation systems leverage visual, textual, and other content features alongside user--item interaction data, and have demonstrated substantial improvements in personalized ranking~\cite{zhou2023freedom, zhou2023bm3, GNN}.
+% Yet a fundamental question remains largely unexplored: \emph{how do different types of modality interactions---complementarity, redundancy, and even conflict---translate into ranking gains?}
+
+% Partial Information Decomposition (PID)~\cite{williams2010nonnegative} offers an interpretive lens for this question, decomposing multimodal contributions into three components: \emph{unique} information carried exclusively by one modality, \emph{redundant} information shared across modalities, and \emph{synergistic} information that emerges only when modalities are combined.
+% Inspired by PID, representation learning methods in general multimodal tasks have achieved notable progress by decoupling representations into distinct subspaces through finer-grained objectives~\cite{liu2021orthogonal}.
+% These methods typically rely on two key ingredients: (i)~cross-modal consistency modeling via contrastive learning (e.g., InfoNCE~\cite{oord2018representation}), and (ii)~orthogonality or decorrelation constraints that suppress redundancy while preserving modality-specific uniqueness.
+% Recent multimodal recommendation studies have begun to adopt these components~\cite{zhou2023bm3, zhang2024fettle}, yielding incremental performance gains.
+% However, a critical question remains insufficiently explored:
+% \begin{center}
+% \emph{Are these components, originally designed for general multimodal tasks, truly suitable for recommendation with user preference ranking as the objective?}
+% \end{center}
+
+% Unlike general multimodal learning, recommender systems are evaluated by the quality of personalized ranking. This makes it essential to characterize how modality-unique and genuinely synergistic signals arise and translate into ranking gains, informing the design of more effective multimodal recommenders.
+% To this end, we conduct a systematic empirical study on two widely adopted components---orthogonality-based decorrelation and InfoNCE-style contrastive alignment.
+% By sweeping their regularization strengths, we uncover two counter-intuitive findings:
+% \begin{itemize}
+%     \item \textbf{Orthogonality suppresses uniqueness.} Stronger orthogonality regularization does not yield richer modality-unique information; instead, it shifts learning toward redundant components.
+%     \item \textbf{Alignment fails to induce synergy.} Contrastive alignment via InfoNCE enforces cross-modal consistency yet provides little incentive to form synergistic signals---those that become useful \emph{only} through fusion. In many cases, fusion even degrades performance.
+% \end{itemize}
+
+% These observations prompt a natural follow-up question: \emph{How can we explicitly elicit modality-unique and cross-modal synergistic information to better serve personalized ranking?}
+% In practice, recommender systems commonly employ Bayesian Personalized Ranking (BPR)~\cite{rendle2009bpr}, which enlarges the preference margin between positive and negative items for each user.
+% However, most existing multimodal methods apply BPR to a single fused representation without differentiating the contributions of individual modalities.
+% Consequently, they struggle to activate modality-specific discriminative evidence and fail to capture the synergistic gains that should emerge from multimodal fusion.
+
+% To address these limitations, we propose \textbf{BR-MRS}, a multimodal recommendation framework that couples cross-modal hard negative mining with a synergy-aware ranking objective.
+% Specifically, we introduce \emph{Cross-modal Hard Negative Sampling}~(CHNS), which assigns each unimodal branch the task of resolving confusable cases identified by the other modality, thereby explicitly activating modality-unique evidence.
+% We further devise a \emph{Synergy-aware BPR Loss} that enforces a larger preference margin for the fused representation than for any single-modality branch, directly incentivizing the model to learn synergistic signals that arise only through multimodal fusion.
+
+% Our main contributions can be summarized as follows:
+% \begin{itemize}
+%     \item \textbf{New Findings.} We conduct a systematic empirical study revealing that two widely adopted components from general multimodal learning---orthogonality regularization and InfoNCE alignment---fail to effectively elicit modality-unique and synergistic information under the personalized ranking objective.
+    
+%     \item \textbf{Novel Method.} We propose \textbf{BR-MRS}, a principled multimodal recommendation framework comprising: (i)~\emph{Cross-modal Hard Negative Sampling}~(CHNS) that explicitly activates modality-unique evidence by assigning each unimodal branch to resolve confusable cases identified by the other; and (ii)~a \emph{Synergy-aware BPR Loss} that enforces the fused representation to achieve a larger preference margin than any single modality, directly incentivizing synergistic learning.
+    
+%     \item \textbf{State-of-the-Art Performance.} Extensive experiments on three public benchmarks demonstrate that BR-MRS consistently outperforms existing methods, achieving relative improvements of up to 23.1\% in NDCG@10. Ablation studies further validate the complementary contributions of each proposed component.
+% \end{itemize}
+Multimodal recommendation systems integrate heterogeneous item modalities such as visual and textual content, and have been shown to substantially improve personalized ranking performance. Different modalities capture distinct aspects of the same item, which naturally leads to modality inconsistency. Such inconsistency can be beneficial when modality-specific differences provide complementary signals for distinguishing positive and negative items, or harmful when it arises from noise that mislead recommendation. Based on this observation, we categorize such inconsistency into two types: \textbf{informative inconsistency}, which enhances ranking discrimination, and \textbf{noisy inconsistency}, which degrades ranking performance. The central challenge in multimodal recommendation is to exploit informative inconsistency while suppressing noisy inconsistency under a personalized ranking objective.
+
+Existing methods address modality inconsistency from several perspectives. Early approaches rely on modality-independent modeling with late fusion, which limits cross-modal interaction and struggles on hard negatives that require modality complementarity. More recent work introduces self-supervised objectives to enforce cross-modal consistency, improving stability but often emphasizing alignment rather than exploiting informative inconsistency for ranking. Other approaches attempt to preserve modality-specific information via explicit decoupling mechanisms, such as orthogonality constraints or modality-specific subspaces; however, these designs are typically not aligned with ranking objectives and offer no guarantee that informative inconsistency translates into ranking gains.
+
+To address these challenges, we propose BR-MRS, a multimodal recommendation framework. We first introduce Cross-modal Hard Negative Sampling (CHNS), which constructs hard negatives across modalities and explicitly drives the model to exploit modality-specific differences that are discriminative for ranking, thereby enhancing the utilization of informative inconsistency. We further propose a Synergy-aware BPR Loss to alleviate fusion degeneration, which constrains the fused representation to outperform each unimodal branch in distinguishing positive and negative items, thereby suppressing the impact of noisy inconsistency on multimodal fusion.
+
+
+Our contributions are summarized as follows:
+\begin{itemize}
+    \item \textbf{New Findings.} We identify and analyze the limitations of existing multimodal recommendation systems in exploiting informative inconsistency and suppressing noisy inconsistency, and show how these limitations lead to cross-modal complementarity failure and fusion degeneration.
+    
+    \item \textbf{Novel Method.} We propose \textbf{BR-MRS}, which combines cross-modal hard negative sampling to activate informative inconsistency with a synergy-aware ranking objective that constrains the fused representation to outperform unimodal branches.
+    
+    \item \textbf{State-of-the-Art Performance.} Extensive experiments on multiple benchmarks demonstrate that \textbf{BR-MRS} consistently outperforms state-of-the-art methods, with ablations and case studies validating the effectiveness of each component.
+\end{itemize}
+
+\section{Related Work}
+
+\textbf{Multimodal Recommendation.} 
+Multimodal recommendation has attracted extensive attention in recent years, with a growing body of research addressing various aspects of the field. Leveraging graph neural networks (GNNs), multimodal graph neural networks such as LGMRec\cite{GNN} and FREEDOM\cite{zhou2023freedom} have been developed to model users' multimodal preferences. Integrating multimodal alignment algorithms, including multimodal contrastive learning (e.g., BM3 \cite{zhou2023bm3}, FETTLE\cite{zhang2024fettle}, AlignRec\cite{1}) and multimodal diffusion models \cite{diffmm} (e.g., Dif, MCDRec), researchers have successfully captured cross-modal representation consistency for items and multimodal relationships between users and items. Following these developments, approaches like MENTOR\cite{xu2025mentor} and MMGCL\cite{mmgcl2022} have employed random graph augmentation strategies to alleviate biases inherent in interaction data. However, these methods largely overlook biases arising from modality confounding and fail to address interaction biases from the perspective of modality representations.
+
+\textbf{Partial Information Decomposition in Multimodal Learning.}
+Partial Information Decomposition (PID) provides a principled framework for decomposing multimodal information into unique, redundant, and synergistic components \cite{williams2010nonnegative}. In general multimodal learning, PID-inspired methods have been proposed to disentangle modality-specific and shared representations. For instance, orthogonality constraints are commonly used to suppress redundancy \cite{liu2021orthogonal}, while contrastive objectives like InfoNCE \cite{oord2018representation} enforce cross-modal consistency. Despite their success in tasks such as cross-modal retrieval, these components are designed for agreement-based objectives rather than user-conditioned ranking. Our work reveals that directly transferring these designs to recommendation leads to suboptimal utilization of unique and synergistic information.
+
+\textbf{Hard Negative Mining.}
+Hard negative sampling has proven effective in representation learning by focusing on difficult-to-distinguish samples \cite{robinson2020contrastive, kalantidis2020hard}. In recommendation, hard negatives have been leveraged to improve the discriminability of learned representations \cite{zhang2023hard}. However, existing approaches typically mine hard negatives within a single representation space without considering cross-modal interactions. Our proposed Cross-modal Hard Negative Sampling (CHNS) differs fundamentally by using one modality to identify confusable cases and assigning the other modality to resolve them, thereby explicitly activating modality-specific evidence for personalized ranking.
+
+\section{Preliminaries}
+\label{sec:preliminaries}
+
+\subsection{Problem Formulation}
+
+\paragraph{Implicit-feedback recommendation.}
+We consider an implicit-feedback setting with a user set $\mathcal{U}$ and an item set $\mathcal{I}$.
+Observed interactions are denoted by $\mathcal{O}\subseteq \mathcal{U}\times\mathcal{I}$, where $(u,i)\in\mathcal{O}$ indicates that user $u$ has interacted with item $i$.
+For each user $u$, we write $\mathcal{O}_u=\{i\in\mathcal{I}:(u,i)\in\mathcal{O}\}$.
+
+
+\paragraph{Graph construction.}
+Following prior work~\cite{zhou2023freedom, GNN}, we construct three types of graphs to capture different relational structures:
+(i)~a \emph{user--item bipartite graph} $\mathcal{G}_{ui}=(\mathcal{U}\cup\mathcal{I}, \mathcal{O})$ encoding interaction signals;
+(ii)~a \emph{user--user homogeneous graph} $\mathcal{G}_{uu}$ where edges connect users with similar interaction patterns; and
+(iii)~an \emph{item--item homogeneous graph} $\mathcal{G}_{ii}^{(m)}$ for each modality $m$, where edges connect items with similar content features.
+These graphs are processed by graph neural networks to obtain refined user and item representations.
+
+\paragraph{Scoring functions.}
+For each user $u\in\mathcal{U}$, we learn an embedding $\mathbf{p}_u\in\mathbb{R}^{d}$.
+For each item $i\in\mathcal{I}$, we construct modality-specific representations $\mathbf{q}^{(t)}_i,\mathbf{q}^{(v)}_i\in\mathbb{R}^{d}$ from text and visual features respectively, and a fused representation $\mathbf{q}^{(f)}_i\in\mathbb{R}^{d}$ via a fusion function $\phi(\cdot)$:
+\begin{equation}
+\mathbf{q}^{(f)}_i = \phi\!\left(\mathbf{q}^{(t)}_i,\mathbf{q}^{(v)}_i\right).
+\end{equation}
+We define unimodal and fused ranking scores by dot product:
+\begin{equation}
+\label{eq:scores}
+\begin{aligned}
+s_t(u,i) &= \langle \mathbf{p}_u,\mathbf{q}^{(t)}_i\rangle, \\
+s_v(u,i) &= \langle \mathbf{p}_u,\mathbf{q}^{(v)}_i\rangle, \\
+s_f(u,i) &= \langle \mathbf{p}_u,\mathbf{q}^{(f)}_i\rangle.
+\end{aligned}
+\end{equation}
+The fused score $s_f$ is used for final ranking.
+
+\paragraph{BPR objective.}
+We adopt Bayesian Personalized Ranking (BPR)~\cite{rendle2009bpr} as the canonical pairwise supervision.
+For each observed pair $(u,i^+)\in\mathcal{O}$, we sample a negative item $i^-\notin\mathcal{O}_u$ and form a triple $(u,i^+,i^-)$.
+Let $\Delta_f = s_f(u,i^+)-s_f(u,i^-)$ be the fused preference margin.
+The BPR loss is
+\begin{equation}
+\mathcal{L}_{\mathrm{BPR}} = -\sum_{(u,i^+,i^-)} \log \sigma(\Delta_f),
+\end{equation}
+where $\sigma(\cdot)$ is the sigmoid function.
+
+\subsection{User Subset Partitioning}
+
+Given a scoring function $s(\cdot,\cdot)$, we define the rank of the target item $i^+$ for user $u$ as
+\begin{equation}
+r_{s}(u,i^+) = 1 + \big|\{j\in\mathcal{I}\setminus\{i^+\}: s(u,j) > s(u,i^+)\}\big|.
+\end{equation}
+Under leave-one-out evaluation, each user has a single held-out target item $i_u^+$, and all ranks and user subsets are defined with respect to this item.
+A recall at cutoff $K$ is successful if $r_s(u,i^+)\le K$.
+Using $r_t(\cdot,\cdot)$, $r_v(\cdot,\cdot)$ and $r_f(\cdot,\cdot)$ induced by $s_t$, $s_v$ and $s_f$, we partition users into four sets:
+\begin{align}
+\mathcal{U}_{t}  &= \left\{ u :
+\begin{aligned}[t]
+& r_t(u,i^+)\le K, \\
+& r_v(u,i^+)>K,\ r_f(u,i^+)>K
+\end{aligned}
+\right\}, \\
+\mathcal{U}_{v}  &= \left\{ u :
+\begin{aligned}[t]
+& r_v(u,i^+)\le K, \\
+& r_t(u,i^+)>K,\ r_f(u,i^+)>K
+\end{aligned}
+\right\}, \\
+\mathcal{U}_{tv} &= \left\{ u :
+\begin{aligned}[t]
+& r_f(u,i^+)\le K, \\
+& r_t(u,i^+)>K,\ r_v(u,i^+)>K
+\end{aligned}
+\right\}, \\
+\mathcal{U}_{r}  &= \left\{ u :
+\begin{aligned}[t]
+& r_t(u,i^+)\le K, \\
+& r_v(u,i^+)\le K,\ r_f(u,i^+)>K
+\end{aligned}
+\right\}.
+\end{align}
+Intuitively, $\mathcal{U}_t$ and $\mathcal{U}_v$ correspond to cases where a single modality suffices,
+$\mathcal{U}_{tv}$ captures synergy where only fusion succeeds, and $\mathcal{U}_r$ indicates a degradation regime where fusion fails despite both unimodal branches succeeding.
+
+\subsection{Empirical Observations}
+\label{sec:empirical}
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figure/empirical_ratios.pdf}
+  \caption{\textbf{Effects of alignment and orthogonality on user subsets.} User ratios $R(\mathcal{U}_m)$ versus regularization strength on the Baby dataset. InfoNCE alignment leaves the synergy subset nearly unchanged, while stronger orthogonality reduces modality-unique subsets and enlarges the degradation regime.}
+  \label{fig:empirical_ratios}
+\end{figure*}
+We empirically examine how two widely adopted components---InfoNCE-style alignment and orthogonality-based decorrelation---shape \emph{different types of multimodal interaction} under personalized ranking.
+Based on the user subset partitioning defined above, we partition users into
+$\{\mathcal{U}_t,\mathcal{U}_v,\mathcal{U}_{tv},\mathcal{U}_r\}$ and quantify each type by its ratio
+\begin{equation}
+R(\mathcal{U}_m)=\frac{|\mathcal{U}_m|}{|\mathcal{U}|},\qquad 
+\mathcal{U}_m\in\{\mathcal{U}_t,\mathcal{U}_v,\mathcal{U}_{tv},\mathcal{U}_r\}.
+\end{equation}
+Larger $R(\mathcal{U}_t)$ or $R(\mathcal{U}_v)$ indicates that \emph{unique} modality evidence is necessary;
+larger $R(\mathcal{U}_{tv})$ indicates \emph{synergy} where only fusion succeeds;
+and larger $R(\mathcal{U}_r)$ indicates a \emph{degradation} regime where fusion fails despite both unimodal branches succeeding.
+
+We sweep the regularization strengths $\lambda_{\mathrm{orth}}$ and $\lambda_{\mathrm{nce}}$ on the Baby dataset.
+Two consistent patterns emerge (Fig.~\ref{fig:empirical_ratios}).
+
+
+
+\paragraph{Orthogonality suppresses uniqueness.}
+As $\lambda_{\mathrm{orth}}$ increases, $R(\mathcal{U}_t)$ and $R(\mathcal{U}_v)$ decrease steadily, while $R(\mathcal{U}_r)$ increases.
+That is, stronger decorrelation does not yield more users that benefit from modality-specific evidence; instead, it enlarges the regime where fusion degrades.
+
+\paragraph{Alignment does not induce synergy.}
+As $\lambda_{\mathrm{nce}}$ increases, $R(\mathcal{U}_{tv})$ remains nearly unchanged.
+In other words, enforcing cross-modal consistency alone provides little incentive to form synergistic signals that become useful \emph{only} through fusion.
+
+These observations reveal a mismatch between generic geometric regularization and personalized ranking:
+orthogonality tends to erode unique utility, and InfoNCE-style alignment fails to create synergy.
+
+
+\section{The Proposed Method}
+\label{sec:method}
+
+In this section, we present \textbf{BR-MRS}, a multimodal recommendation framework designed to exploit informative inconsistency while suppressing noisy inconsistency under personalized ranking.
+An overview is illustrated in Fig.~\ref{fig:framework}.
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figure/OverView.png}
+    \caption{\textbf{Overview of BR-MRS.}}
+    \label{fig:framework}
+\end{figure*}
+BR-MRS comprises two core components:
+(i)~\emph{Cross-modal Hard Negative Sampling}~(CHNS), which exploits informative inconsistency by constructing hard negatives across modalities and explicitly driving the model to leverage modality-specific differences that are discriminative for ranking; and
+(ii)~\emph{Synergy-aware BPR Loss}, which suppresses noisy inconsistency by constraining the fused representation to outperform each unimodal branch in distinguishing positive and negative items, thereby alleviating fusion degeneration.
+Algorithm~\ref{alg:brmrs} summarizes the overall training procedure.
+
+\begin{algorithm}[t]
+\caption{BR-MRS training procedure}
+\label{alg:brmrs}
+\begin{algorithmic}[1]
+\REQUIRE Interactions $\mathcal{O}$, item features $\{\mathbf{x}_i^{(t)}, \mathbf{x}_i^{(v)}\}$, hyperparameters $\lambda_h$, $\lambda_s$, $\theta$, $\lambda$
+\ENSURE Trained parameters $\Theta$
+\STATE Initialize model parameters $\Theta$
+\FOR{each epoch}
+    \FOR{each $(u,i^+)\in\mathcal{O}$}
+        \STATE Sample candidate negatives $\mathcal{N}(u)\subseteq \mathcal{I}\setminus\mathcal{O}_u$
+        \STATE Compute unimodal and fused scores $s_t(u,\cdot)$, $s_v(u,\cdot)$, $s_f(u,\cdot)$
+        \STATE $j_v \leftarrow \arg\max_{j\in \mathcal{N}(u)} s_v(u,j)$
+        \STATE $j_t \leftarrow \arg\max_{j\in \mathcal{N}(u)} s_t(u,j)$
+        \STATE Sample a negative $i^- \in \mathcal{N}(u)$ for $\mathcal{L}_{\mathrm{syn}}$
+        \STATE Compute $\mathcal{L}_{\mathrm{chns}}$ and $\mathcal{L}_{\mathrm{syn}}$
+        \STATE Update $\Theta$ by minimizing $\mathcal{L}=\lambda_h\mathcal{L}_{\mathrm{chns}}+\lambda_s\mathcal{L}_{\mathrm{syn}}+\lambda\lVert\Theta\rVert_2^2$
+    \ENDFOR
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Cross-modal Hard Negative Sampling}
+To effectively exploit informative inconsistency for better user preference characterization, we need a mechanism that identifies and leverages the discriminative evidence from each modality.
+By explicitly mining such cases, we find that informative inconsistency manifests when one modality is confused by certain negatives while the other modality can provide discriminative evidence.
+
+Motivated by this observation, we revisit the negative sampling strategy in recommender systems~\cite{zhang2023hard}.
+Prior methods mine hard negatives based on the fused representation, while ranking errors may originate from specific modalities where user preferences and informative inconsistency have not been sufficiently captured.
+To this end, we propose \emph{Cross-modal Hard Negative Sampling}~(CHNS), which constructs hard negatives across modalities: each modality is trained to resolve confusable cases identified by the other modality, thereby explicitly activating modality-specific discriminative capacity to exploit informative inconsistency.
+Specifically, for each positive pair $(u,i^+)\in\mathcal{O}$, we first sample a candidate negative pool $\mathcal{N}(u)\subseteq \mathcal{I}\setminus\mathcal{O}_u$, and then identify the most confusable negative under each modality:
+\begin{equation}
+\begin{aligned}
+j_v(u,i^+) &= \arg\max_{j\in \mathcal{N}(u)} s_v(u,j), \\
+j_t(u,i^+) &= \arg\max_{j\in \mathcal{N}(u)} s_t(u,j).
+\end{aligned}
+\end{equation}
+Here, $j_v$ denotes the negative that is hardest to distinguish from the positive under the visual modality, while $j_t$ denotes the most confusable negative under the textual modality.
+We then \emph{swap} these confusable negatives to train the \emph{other} modality branch, explicitly requiring each modality to contribute its unique information as discriminative evidence:
+\begin{equation}
+\begin{aligned}
+\mathcal{L}_{\mathrm{chns}}
+&=
+-\sum_{(u,i^+)\in\mathcal{O}} \Bigl[ \\
+&\quad \log \sigma\!\Bigl(s_t(u,i^+) - s_t\bigl(u,j_v(u,i^+)\bigr)\Bigr) \\
+&\quad + \log \sigma\!\Bigl(s_v(u,i^+) - s_v\bigl(u,j_t(u,i^+)\bigr)\Bigr)
+\Bigr].
+\end{aligned}
+\label{eq:chns}
+\end{equation}
+The first term requires the textual modality to discriminate negatives that confuse the visual modality; the second term requires the visual modality to resolve textually confusable cases.
+Through this cross-modal supervision design, CHNS explicitly exploits informative inconsistency by forcing each modality to leverage its unique discriminative strengths for personalized ranking.
+
+\subsection{Synergy-aware BPR Loss}
+While CHNS exploits informative inconsistency, we must also address noisy inconsistency that can degrade fusion performance.
+Prior work directly applies BPR loss on the fused representation, overlooking the potential performance degradation after multimodal fusion (i.e., the $\mathcal{U}_r$ regime identified in our empirical study).
+Such degradation occurs when noisy inconsistency misleads the fusion process, causing the fused representation to perform worse than individual modalities.
+To suppress the impact of noisy inconsistency, we propose a \emph{Synergy-aware BPR Loss} that constrains the fused representation to outperform each unimodal branch, thereby alleviating fusion degeneration.
+
+Specifically, we enforce a strict preference margin constraint on the fused representation such that the fused branch exhibits a stronger discriminative advantage over unimodal branches.
+For a training triple $(u,i^+,i^-)$, we define the preference margins:
+\begin{equation}
+\label{eq:margins}
+\begin{aligned}
+\Delta_f &= s_f(u,i^+) - s_f(u,i^-),\\
+\Delta_t &= s_t(u,i^+) - s_t(u,i^-),\\
+\Delta_v &= s_v(u,i^+) - s_v(u,i^-).
+\end{aligned}
+\end{equation}
+We impose a margin $\theta>0$ and define the synergy-aware term:
+\begin{equation}
+\mathcal{L}_{\mathrm{syn}}
+=
+-\sum_{(u,i^+,i^-)}
+\log \sigma\!\Big(\Delta_f - \max(\Delta_t,\Delta_v) - \theta\Big).
+\label{eq:syn}
+\end{equation}
+By constraining $\Delta_f > \max(\Delta_t, \Delta_v) + \theta$, this loss directly operationalizes the principle that \emph{fusion should be stronger than any single modality} in pairwise ranking discrimination.
+Through this explicit constraint, the synergy-aware loss suppresses noisy inconsistency by ensuring that multimodal fusion surpasses any unimodal branch in personalized ranking, preventing fusion degeneration.
+
+\subsection{Overall Objective}
+We integrate the cross-modal hard negative sampling loss and the synergy-aware loss into a unified training objective for BR-MRS:
+\begin{equation}
+\mathcal{L}
+=
+\lambda_h\,\mathcal{L}_{\mathrm{chns}}
++
+\lambda_s\,\mathcal{L}_{\mathrm{syn}}
++
+\lambda \lVert \Theta\rVert_2^2,
+\end{equation}
+where $\lambda_h$ and $\lambda_s$ control the contributions of CHNS and the synergy-aware loss respectively,
+$\lambda$ is the regularization coefficient, and $\Theta$ denotes all trainable parameters.
+
+This unified design ensures that informative inconsistency is effectively exploited through cross-modal hard negative mining, while noisy inconsistency is suppressed through the synergy-aware constraint, enabling BR-MRS to achieve superior personalized ranking performance.
+
+
+\section{Experiment}
+\subsection{Experimental Setup}
+We evaluate BR-MRS on three public multimodal recommendation benchmarks, namely Baby, Sports, and Clothing, where each item is associated with both visual and textual content features. We follow standard preprocessing and splitting protocols used in prior multimodal recommendation work to ensure fair comparison. We adopt leave-one-out evaluation and report Recall@K and NDCG@K with $K\in\{10,20\}$. Baselines cover classical CF models (e.g., BPR, LightGCN, ApeGNN, MGDN) and a broad range of multimodal recommenders (e.g., VBPR, MMGCN, DualGNN, GRCN, LATTICE, BM3, SLMRec, MICRO, MGCN, FREEDOM, LGMRec, DRAGON, MIG-GT, REARM). For all methods, hyperparameters are tuned on validation sets, and we use the same multimodal features and evaluation pipeline for a fair comparison.
+
+\subsection{Overall Performance}
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{Results on Benchmark Datasets}
+\label{tab:main}
+\begin{tabular}{lcccc cccc cccc}
+\toprule
+\rowcolor{tableheader}
+Method & \multicolumn{4}{c}{Baby} & \multicolumn{4}{c}{Sports} & \multicolumn{4}{c}{Clothing} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}\cmidrule(lr){10-13}
+Metric & R@10 & R@20 & N@10 & N@20 & R@10 & R@20 & N@10 & N@20 & R@10 & R@20 & N@10 & N@20 \\
+\midrule
+BPR      & 0.0357 & 0.0575 & 0.0192 & 0.0249 & 0.0432 & 0.0653 & 0.0241 & 0.0298 & 0.0206 & 0.0303 & 0.0114 & 0.0138 \\
+LightGCN & 0.0479 & 0.0754 & 0.0257 & 0.0328 & 0.0569 & 0.0864 & 0.0311 & 0.0387 & 0.0361 & 0.0544 & 0.0197 & 0.0243 \\
+ApeGNN   & 0.0501 & 0.0775 & 0.0267 & 0.0338 & 0.0608 & 0.0892 & 0.0333 & 0.0407 & 0.0378 & 0.0538 & 0.0204 & 0.0244 \\
+MGDN     & 0.0495 & 0.0783 & 0.0272 & 0.0346 & 0.0614 & 0.0932 & 0.0340 & 0.0422 & 0.0362 & 0.0551 & 0.0199 & 0.0247 \\
+\midrule
+VBPR     & 0.0423 & 0.0663 & 0.0223 & 0.0284 & 0.0558 & 0.0856 & 0.0307 & 0.0384 & 0.0281 & 0.0415 & 0.0158 & 0.0192 \\
+MMGCN    & 0.0421 & 0.0660 & 0.0220 & 0.0282 & 0.0401 & 0.0636 & 0.0209 & 0.0270 & 0.0227 & 0.0361 & 0.0154 & 0.0154 \\
+DualGNN  & 0.0513 & 0.0803 & 0.0278 & 0.0352 & 0.0588 & 0.0899 & 0.0324 & 0.0404 & 0.0452 & 0.0675 & 0.0242 & 0.0298 \\
+GRCN     & 0.0532 & 0.0824 & 0.0282 & 0.0358 & 0.0599 & 0.0919 & 0.0330 & 0.0413 & 0.0421 & 0.0657 & 0.0224 & 0.0284 \\
+LATTICE  & 0.0547 & 0.0850 & 0.0292 & 0.0370 & 0.0620 & 0.0953 & 0.0335 & 0.0419 & 0.0492 & 0.0733 & 0.0268 & 0.0330 \\
+BM3      & 0.0564 & 0.0883 & 0.0301 & 0.0383 & 0.0656 & 0.0980 & 0.0355 & 0.0438 & 0.0422 & 0.0621 & 0.0231 & 0.0281 \\
+SLMRec   & 0.0521 & 0.0772 & 0.0289 & 0.0354 & 0.0663 & 0.0990 & 0.0365 & 0.0450 & 0.0442 & 0.0659 & 0.0241 & 0.0296 \\
+MICRO    & 0.0584 & 0.0929 & 0.0318 & 0.0407 & 0.0679 & 0.1050 & 0.0367 & 0.0463 & 0.0521 & 0.0772 & 0.0283 & 0.0347 \\
+MGCN     & 0.0620 & 0.0964 & 0.0339 & 0.0427 & 0.0729 & 0.1106 & 0.0397 & 0.0496 & 0.0641 & 0.0945 & 0.0347 & 0.0428 \\
+FREEDOM  & 0.0627 & 0.0992 & 0.0330 & 0.0424 & 0.0717 & 0.1089 & 0.0385 & 0.0481 & 0.0629 & 0.0941 & 0.0341 & 0.0420 \\
+LGMRec   & 0.0644 & 0.1002 & 0.0349 & 0.0440 & 0.0720 & 0.1068 & 0.0390 & 0.0480 & 0.0555 & 0.0828 & 0.0302 & 0.0371 \\
+DRAGON   & 0.0662 & 0.1021 & 0.0345 & 0.0435 & 0.0752 & 0.1139 & 0.0413 & 0.0512 & 0.0671 & 0.0979 & 0.0365 & 0.0443 \\
+MIG-GT   & 0.0665 & 0.1021 & 0.0361 & 0.0452 & 0.0753 & 0.1130 & 0.0414 & 0.0511 & 0.0636 & 0.0934 & 0.0347 & 0.0422 \\
+
+REARM    & \underline{0.0705} & \underline{0.1105} & \underline{0.0377} & \underline{0.0479} & \underline{0.0836} & \underline{0.1231} & \underline{0.0455} & \underline{0.0553} & \underline{0.0700} & \underline{0.0998} & \underline{0.0377} & \underline{0.0454} \\
+\midrule
+\rowcolor{rowhighlight}
+\best{BR-MRS}   & \best{0.0819} & \best{0.1215} & \best{0.0452} & \best{0.0554}   &  --    &  --    &  --    &  --    &  --    &  --    &  --    &  --    \\
+\midrule
+Improve & \textcolor{red!50}{$\uparrow$ 16.1\%} & \textcolor{red!50}{$\uparrow$ 9.9\%} & \textcolor{red!50}{$\uparrow$ 23.1\%} & \textcolor{red!50}{$\uparrow$ 15.4\%} &
+\textcolor{red!50}{$\uparrow$ --\%}  & \textcolor{red!50}{$\uparrow$ --\%} &
+\textcolor{red!50}{$\uparrow$ --\%}  & \textcolor{red!50}{$\uparrow$ --\%} &
+\textcolor{red!50}{$\uparrow$ --\%}  & \textcolor{red!50}{$\uparrow$ --\%} &
+\textcolor{red!50}{$\uparrow$ --\%}  & \textcolor{red!50}{$\uparrow$ --\%} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+Table~\ref{tab:main} summarizes the overall performance. BR-MRS consistently outperforms strong baselines across different model families, achieving state-of-the-art results on the reported metrics. On the Baby dataset, BR-MRS yields substantial improvements over the strongest baseline, with gains up to 23.1\% in NDCG@10. These results validate that explicitly modeling modality-unique evidence and cross-modal synergy is more effective than applying generic alignment or fusion-only objectives.
+
+\subsection{Ablation Study}
+
+To validate the effectiveness of each proposed component, we conduct ablation studies on two benchmark datasets. We study two variants of BR-MRS: merely providing Cross-modal Hard Negative Sampling (CHNS) or Synergy-aware BPR loss (Syn). The checkmark \ding{52} indicates the component is enabled, while $\circ$ indicates it is disabled.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Ablation study on two benchmark datasets. We report Recall@10 (R@10) and NDCG@10 (N@10).}
+\label{tab:ablation}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{cc|cc|cc}
+\toprule
+\rowcolor{CadetBlue!20}
+\textbf{CHNS} & \textbf{Syn-BPR} & \multicolumn{2}{c|}{\textbf{Baby}} & \multicolumn{2}{c}{\textbf{Sports}} \\
+\rowcolor{CadetBlue!20}
+ &  & R@10 & N@10 & R@10 & N@10 \\
+\midrule
+\ding{52} & $\circ$ & 0.0803 & 0.0446 & -- & -- \\
+$\circ$ & \ding{52} & 0.0767 & 0.0411 & -- & -- \\
+\midrule
+\rowcolor{rowhighlight}
+\ding{52} & \ding{52} & \textbf{0.0819} & \textbf{0.0452} & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As shown in Table~\ref{tab:ablation}, disabling either component leads to performance degradation. When only CHNS is enabled, the model can mine modality-specific discriminative evidence but lacks explicit synergy constraints. When only Syn is enabled, the model enforces fusion superiority but misses the cross-modal hard negative mining. The full model with both components achieves the best performance, demonstrating their complementary contributions.
+
+\subsection{Hyper-parameter and Robustness Analysis}
+
+We analyze the sensitivity of BR-MRS to key hyperparameters, including $\lambda_h$ (weight of CHNS), $\lambda_s$ (weight of synergy-aware loss), and $\theta$ (synergy margin). Performance remains stable across a broad range of values, with moderate $\theta$ yielding the best trade-off between unimodal stability and fusion gains. We also observe that BR-MRS maintains consistent improvements under different evaluation cutoffs, indicating robustness to the choice of ranking metric. Detailed curves and additional robustness results are deferred to the Appendix.
+
+\subsection{Effectiveness of CHNS}
+We further compare CHNS with alternative negative sampling strategies, including uniform sampling and hard negatives mined within a single (fused or unimodal) representation space. CHNS consistently yields stronger gains, as it deliberately selects negatives that are confusable in one modality but separable in the other. This cross-modal contrast forces each unimodal branch to contribute discriminative cues that would otherwise be ignored, leading to larger unique subsets ($\mathcal{U}_t$ and $\mathcal{U}_v$) and improved overall ranking performance.
+
+\subsection{Effectiveness of Synergy-aware Loss}
+To evaluate the synergy-aware loss, we analyze how fusion quality changes compared to unimodal branches. The synergy constraint reduces fusion degradation by shrinking the degradation subset $\mathcal{U}_r$ and expanding the synergy subset $\mathcal{U}_{tv}$, indicating that fused representations more frequently achieve correct ranking than either unimodal branch. In practice, this translates into more reliable fused scores and fewer cases where multimodal fusion hurts performance.
+
+\section{Conclusion}
+
+In this paper, we investigated the limitations of directly transferring general multimodal learning components---specifically InfoNCE-style alignment and orthogonality-based decorrelation---to multimodal recommendation systems. Through systematic empirical analysis, we revealed that stronger orthogonality regularization fails to enhance modality-unique information and instead enlarges the degradation regime, while contrastive alignment provides little incentive for synergistic signals.
+
+To address these limitations, we proposed \textbf{BR-MRS}, a synergy-aware multimodal recommendation framework with two key innovations. First, Cross-modal Hard Negative Sampling (CHNS) explicitly activates modality-specific evidence by assigning each unimodal branch to resolve confusable cases identified by the other modality. Second, the Synergy-aware BPR Loss enforces that the fused representation achieves a larger preference margin than any single-modality branch, explicitly inducing synergistic learning.
+
+Extensive experiments on three benchmark datasets demonstrate that BR-MRS significantly outperforms state-of-the-art methods, achieving up to 23.1\% improvement in NDCG@10. Ablation studies confirm the complementary contributions of both proposed components. Our work provides new insights into how multimodal information should be leveraged for personalized ranking and offers a principled approach for future multimodal recommendation research.
+
+\section*{Impact Statement}
+
+This paper presents work whose goal is to advance the field of Machine
+Learning. There are many potential societal consequences of our work, none
+which we feel must be specifically highlighted here.
+
+\bibliography{example_paper}
+\bibliographystyle{icml2026}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% APPENDIX
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\appendix
+\onecolumn
+\section{appendix}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Theorem 2: No guarantee for unimodal indistinguishability (refined)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{theorem}[No guarantee to resolve unimodal indistinguishability (refined)]
+  \label{thm:no_unique_refined}
+  Consider $\mathcal{L}_{\mathrm{total}}$ in \eqref{eq:L_total} trained with negative sampling \eqref{eq:BPR}.
+  Under Assumption~\ref{ass:rare}, for any $\varepsilon>0$ there exist parameters $\Theta_\varepsilon$
+  (i.e., encoders $\phi_t,\phi_v$, projection heads used in $\tilde{\mathbf{h}}_t,\tilde{\mathbf{h}}_v$,
+  fusion $\phi_f$, and user embeddings $\{\mathbf{e}_u\}$) such that
+  \begin{equation}
+  \mathcal{L}_{\mathrm{InfoNCE}}(\Theta_\varepsilon)\le \varepsilon,\qquad
+  \mathcal{L}_{\mathrm{orth}}(\Theta_\varepsilon)=0,\qquad
+  \mathcal{L}_{\mathrm{BPR}}(\Theta_\varepsilon)\le \varepsilon + \rho_A M,
+  \end{equation}
+  for some finite constant $M$ (as in Lemma~\ref{lem:bpr_rare}),
+  yet the learned model fails to separate modality-ambiguous negatives
+  $\mathcal{A}_v(u,i^+)$ (Definition~\ref{def:ambiguous}) for a non-negligible fraction of $(u,i^+)$.
+  Consequently, minimizing \eqref{eq:L_total} does not guarantee eliminating unimodal indistinguishability.
+  \end{theorem}
+  
+  \begin{proof}
+  Fix an arbitrary $\varepsilon>0$. We construct a family of representations that attains low loss while
+  provably lacking modality-unique discriminative evidence.
+  
+  \paragraph{Block-orthogonal parametrization.}
+  Let the embedding space decompose into three orthogonal subspaces
+  $\mathbb{R}^d=\mathcal{S}_t\oplus\mathcal{S}_v\oplus\mathcal{S}_p$
+  with dimensions $d=d_c+d_c+d_p$.
+  For each item $i$, define a shared factor $\mathbf{c}_i\in\mathbb{R}^{d_c}$
+  and an (optional) modality-private factor $\mathbf{u}_i\in\mathbb{R}^{d_p}$.
+  We realize modality embeddings as
+  \begin{equation}
+  \mathbf{h}_t^i=\begin{bmatrix}\mathbf{c}_i\\ \mathbf{0}\\ \mathbf{u}_i\end{bmatrix},
+  \qquad
+  \mathbf{h}_v^i=\begin{bmatrix}\mathbf{0}\\ \mathbf{c}_i\\ \mathbf{0}\end{bmatrix}.
+  \label{eq:block_unique}
+  \end{equation}
+  Let $\mathbf{P}_t=[\mathbf{I}_{d_c}\ \mathbf{0}\ \mathbf{0}]$ and
+  $\mathbf{P}_v=[\mathbf{0}\ \mathbf{I}_{d_c}\ \mathbf{0}]$ be selection matrices.
+  Define the contrastive embeddings by projection heads
+  \begin{equation}
+  \tilde{\mathbf{h}}_t^i=\mathbf{P}_t\mathbf{h}_t^i=\mathbf{c}_i,
+  \qquad
+  \tilde{\mathbf{h}}_v^i=\mathbf{P}_v\mathbf{h}_v^i=\mathbf{c}_i.
+  \label{eq:block_proj}
+  \end{equation}
+  
+  \paragraph{Orthogonality term is exactly minimized.}
+  Stacking item embeddings yields
+  \[
+  \mathbf{H}_t=\begin{bmatrix}\mathbf{C}\\ \mathbf{0}\\ \mathbf{U}\end{bmatrix},
+  \qquad
+  \mathbf{H}_v=\begin{bmatrix}\mathbf{0}\\ \mathbf{C}\\ \mathbf{0}\end{bmatrix},
+  \]
+  where $\mathbf{C}=[\mathbf{c}_1,\dots,\mathbf{c}_{|\mathcal{I}|}]$ and
+  $\mathbf{U}=[\mathbf{u}_1,\dots,\mathbf{u}_{|\mathcal{I}|}]$.
+  Therefore,
+  \[
+  \mathbf{H}_t^\top\mathbf{H}_v
+  =
+  \mathbf{C}^\top\mathbf{0}+\mathbf{0}^\top\mathbf{C}+\mathbf{U}^\top\mathbf{0}
+  =
+  \mathbf{0},
+  \]
+  hence $\mathcal{L}_{\mathrm{orth}}=\|\mathbf{H}_t^\top\mathbf{H}_v\|_F^2=0$.
+  
+  \paragraph{InfoNCE can be made arbitrarily small.}
+  By \eqref{eq:block_proj}, the contrastive pair for item $i$ is $(\mathbf{c}_i,\mathbf{c}_i)$.
+  Choose $\{\mathbf{c}_i\}_{i\in\mathcal{I}}$ to be (approximately) orthonormal in $\mathbb{R}^{d_c}$ with $d_c$ sufficiently large,
+  and take $f(\mathbf{a},\mathbf{b})=\langle \mathbf{a},\mathbf{b}\rangle$.
+  Then $f(\mathbf{c}_i,\mathbf{c}_i)=1$ and $f(\mathbf{c}_i,\mathbf{c}_j)\approx 0$ for $j\neq i$,
+  implying the InfoNCE denominator is dominated by the positive term.
+  As $d_c$ increases (or equivalently by increasing separation among $\{\mathbf{c}_i\}$),
+  $\mathcal{L}_{\mathrm{InfoNCE}}$ can be driven below any prescribed $\varepsilon>0$.
+  
+  \paragraph{Fused BPR can be small while ignoring modality-unique evidence.}
+  Let the fusion module ignore the private channel $\mathcal{S}_p$:
+  \begin{equation}
+  \mathbf{h}_f^i=\phi_f(\mathbf{h}_t^i,\mathbf{h}_v^i)
+  =\begin{bmatrix}\mathbf{c}_i\\ \mathbf{c}_i\\ \mathbf{0}\end{bmatrix}.
+  \label{eq:block_fuse_unique}
+  \end{equation}
+  Choose user embeddings $\mathbf{e}_u=[\mathbf{w}_u;\mathbf{w}_u;\mathbf{0}]$ so that
+  $s_t(u,i)=\langle \mathbf{w}_u,\mathbf{c}_i\rangle$ and
+  $s_v(u,i)=\langle \mathbf{w}_u,\mathbf{c}_i\rangle$, and
+  $s_f(u,i)=2\langle \mathbf{w}_u,\mathbf{c}_i\rangle$.
+  Hence BPR training reduces to learning $(\mathbf{w}_u,\mathbf{c}_i)$ to separate positives from sampled negatives
+  in the shared factor space.
+  
+  Now consider $S=\mathcal{A}_v(u,i^+)$.
+  By Assumption~\ref{ass:rare}, $p=q(S\mid u)\le \rho_A$ for a non-negligible fraction of $(u,i^+)$.
+  Applying Lemma~\ref{lem:bpr_rare}, the contribution of constraints on $S$ to the sampled BPR objective is at most $pM\le \rho_A M$.
+  Therefore, by choosing $(\mathbf{w}_u,\mathbf{c}_i)$ to yield arbitrarily small loss on the complement
+  $\mathcal{I}\setminus(\mathcal{O}_u\cup S)$, we obtain
+  $\mathcal{L}_{\mathrm{BPR}}\le \varepsilon + \rho_A M$.
+  
+  \paragraph{Failure on unimodal indistinguishability.}
+  By Definition~\ref{def:ambiguous}, negatives in $\mathcal{A}_v(u,i^+)$ admit task-relevant modality-unique evidence
+  that is not captured by the shared factor alone.
+  Our construction makes the fused scorer and both unimodal scorers depend only on $\mathbf{c}_i$
+  and completely ignore the private evidence in $\mathbf{u}_i$.
+  Thus, for those ambiguous negatives, the model is not compelled by
+  $\mathcal{L}_{\mathrm{BPR}}+\lambda_1\mathcal{L}_{\mathrm{InfoNCE}}+\lambda_2\mathcal{L}_{\mathrm{orth}}$
+  to learn the unique evidence needed for disambiguation, and unimodal indistinguishability can persist.
+  
+  This completes the proof.
+  \end{proof}
+  
+
+\end{document}

@@ -1,0 +1,8 @@
+Rc files read:
+  NONE
+Latexmk: This is Latexmk, John Collins, 15 June 2025. Version 4.87.
+Latexmk: Nothing to do for 'LiM.tex'.
+Latexmk: All targets (LiM.pdf) are up-to-date
+Collected error summary (may duplicate other messages):
+  pdflatex: gave an error in previous invocation of latexmk.
+
