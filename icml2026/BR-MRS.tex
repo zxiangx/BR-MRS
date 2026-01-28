@@ -375,11 +375,11 @@ For a training triple $(u,i^+,i^-)$ where $i^-$ is sampled from $\mathcal{N}(u)$
 \label{eq:margins}
 \begin{aligned}
 \Delta_f &= s_f(u,i^+) - s_f(u,i^-),\\
-\Delta_t &= s_t(u,i^+) - s_t(u,i^-),\\
-\Delta_v &= s_v(u,i^+) - s_v(u,i^-).
+\Delta_t &= \text{sg}[s_t(u,i^+) - s_t(u,i^-)],\\
+\Delta_v &= \text{sg}[s_v(u,i^+) - s_v(u,i^-)].
 \end{aligned}
 \end{equation}
-We impose a margin $\theta>0$ and define the synergy-aware term:
+Where $\text{sg}$ means stop gradient. We impose a margin $\theta>0$ and define the synergy-aware term:
 \begin{equation}
 \mathcal{L}_{\mathrm{syn}}
 =

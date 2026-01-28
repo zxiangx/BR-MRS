@@ -1,0 +1,98 @@
+\begin{thebibliography}{17}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Dong et~al.(2025)Dong, Song, Zheng, Zhao, and Ding]{dong2025modalityreliabilityguidedmultimodal}
+Dong, X., Song, X., Zheng, N., Zhao, S., and Ding, G.
+\newblock Modality reliability guided multimodal recommendation, 2025.
+\newblock URL \url{https://arxiv.org/abs/2504.16524}.
+
+\bibitem[Guo et~al.(2024)]{LGMRec}
+Guo, Z. et~al.
+\newblock Lgmrec: Local and global graph learning for multimodal recommendation.
+\newblock In \emph{Proceedings of the AAAI Conference on Artificial Intelligence}, 2024.
+
+\bibitem[He et~al.(2020)He, Deng, Wang, Li, Zhang, and Wang]{he2020lightgcn}
+He, X., Deng, K., Wang, X., Li, Y., Zhang, Y., and Wang, M.
+\newblock Lightgcn: Simplifying and powering graph convolution network for recommendation.
+\newblock In \emph{Proceedings of the ACM SIGIR Conference}, 2020.
+
+\bibitem[Jiang et~al.(2024)]{diffmm}
+Jiang, Y. et~al.
+\newblock Diffmm: Multi-modal diffusion model for recommendation.
+\newblock In \emph{Proceedings of the ACM International Conference on Multimedia}, 2024.
+
+\bibitem[Kalantidis et~al.(2020)]{kalantidis2020hard}
+Kalantidis, Y. et~al.
+\newblock Hard negative mixing for contrastive learning.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2020.
+
+\bibitem[Liu et~al.(2024{\natexlab{a}})Liu, Hu, Xiao, Zhao, Gao, Wang, Li, and Tang]{liu2024multimodalrecommendersystemssurvey}
+Liu, Q., Hu, J., Xiao, Y., Zhao, X., Gao, J., Wang, W., Li, Q., and Tang, J.
+\newblock Multimodal recommender systems: A survey, 2024{\natexlab{a}}.
+\newblock URL \url{https://arxiv.org/abs/2302.03883}.
+
+\bibitem[Liu et~al.(2024{\natexlab{b}})]{alignrec}
+Liu, Y. et~al.
+\newblock Alignrec: Aligning and training in multimodal recommendations, 2024{\natexlab{b}}.
+
+\bibitem[Ong \& Khong(2025)Ong and Khong]{Ong_smore_2025}
+Ong, R.~K. and Khong, A. W.~H.
+\newblock Spectrum-based modality representation fusion graph convolutional network for multimodal recommendation.
+\newblock In \emph{Proceedings of the Eighteenth ACM International Conference on Web Search and Data Mining}, WSDM ’25, pp.\  773–781. ACM, March 2025.
+\newblock \doi{10.1145/3701551.3703561}.
+\newblock URL \url{http://dx.doi.org/10.1145/3701551.3703561}.
+
+\bibitem[Rendle et~al.(2009)Rendle, Freudenthaler, Gantner, and Schmidt-Thieme]{rendle2009bpr}
+Rendle, S., Freudenthaler, C., Gantner, Z., and Schmidt-Thieme, L.
+\newblock Bpr: Bayesian personalized ranking from implicit feedback.
+\newblock In \emph{Proceedings of the Twenty-Fifth Conference on Uncertainty in Artificial Intelligence}, 2009.
+
+\bibitem[Robinson et~al.(2021)]{robinson2020contrastive}
+Robinson, J. et~al.
+\newblock Contrastive learning with hard negative samples.
+\newblock In \emph{International Conference on Learning Representations}, 2021.
+
+\bibitem[Wei et~al.(2023)Wei, Huang, Xia, and Zhang]{Wei_mmssl_2023}
+Wei, W., Huang, C., Xia, L., and Zhang, C.
+\newblock Multi-modal self-supervised learning for recommendation.
+\newblock In \emph{Proceedings of the ACM Web Conference 2023}, WWW ’23, pp.\  790–800. ACM, April 2023.
+\newblock \doi{10.1145/3543507.3583206}.
+\newblock URL \url{http://dx.doi.org/10.1145/3543507.3583206}.
+
+\bibitem[Williams \& Beer(2010)Williams and Beer]{williams2010nonnegative}
+Williams, P.~L. and Beer, R.~D.
+\newblock Nonnegative decomposition of multivariate information.
+\newblock \emph{arXiv preprint arXiv:1004.2515}, 2010.
+
+\bibitem[Xu et~al.(2025{\natexlab{a}})Xu, Chen, Yang, Li, Wang, Hu, Hoi, and Ngai]{xu2025surveymultimodalrecommendersystems}
+Xu, J., Chen, Z., Yang, S., Li, J., Wang, W., Hu, X., Hoi, S., and Ngai, E.
+\newblock A survey on multimodal recommender systems: Recent advances and future directions, 2025{\natexlab{a}}.
+\newblock URL \url{https://arxiv.org/abs/2502.15711}.
+
+\bibitem[Xu et~al.(2025{\natexlab{b}})]{xu2025mentor}
+Xu, J. et~al.
+\newblock Mentor: Multi-level self-supervised learning for multimodal recommendation.
+\newblock In \emph{Proceedings of the Web Conference}, 2025{\natexlab{b}}.
+
+\bibitem[Yang et~al.(2025)Yang, Wang, and Hu]{yang2025efficientquantificationmultimodalinteraction}
+Yang, Z., Wang, H., and Hu, D.
+\newblock Efficient quantification of multimodal interaction at sample level, 2025.
+\newblock URL \url{https://arxiv.org/abs/2506.17248}.
+
+\bibitem[Yu et~al.(2023)Yu, Tan, Lu, and Bao]{Yu_mgcn_2023}
+Yu, P., Tan, Z., Lu, G., and Bao, B.-K.
+\newblock Multi-view graph convolutional network for multimedia recommendation.
+\newblock In \emph{Proceedings of the 31st ACM International Conference on Multimedia}, MM ’23, pp.\  6576–6585. ACM, October 2023.
+\newblock \doi{10.1145/3581783.3613915}.
+\newblock URL \url{http://dx.doi.org/10.1145/3581783.3613915}.
+
+\bibitem[Zhou et~al.(2023)]{zhou2023bm3}
+Zhou, X. et~al.
+\newblock Bootstrap latent representations for multi-modal recommendation.
+\newblock In \emph{Proceedings of the Web Conference}, 2023.
+
+\end{thebibliography}
